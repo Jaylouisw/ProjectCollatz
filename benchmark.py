@@ -1,6 +1,7 @@
 """
 Collatz Engine Benchmark Script
 Automatically collects system specs, runs optimization, and saves results
+Supports both GPU hybrid mode and CPU-only mode
 """
 
 import subprocess
@@ -16,8 +17,6 @@ try:
     GPU_AVAILABLE = True
 except ImportError:
     GPU_AVAILABLE = False
-    print("ERROR: CuPy not installed. Please run: pip install cupy-cuda12x")
-    sys.exit(1)
 
 def get_system_specs():
     """Collect system specifications."""
@@ -146,6 +145,20 @@ def run_benchmark(duration_minutes=10):
     print("Collecting system specifications...")
     print()
     
+    # Determine mode
+    mode = 'cpu'
+    if GPU_AVAILABLE:
+        try:
+            device = cp.cuda.Device()
+            props = cp.cuda.runtime.getDeviceProperties(device.id)
+            mode = 'gpu'
+            print(f"Mode: GPU Hybrid (detected {props['name'].decode()})")
+        except:
+            print("Mode: CPU-only (GPU detected but initialization failed)")
+    else:
+        print("Mode: CPU-only (no GPU available)")
+    print()
+    
     specs = get_system_specs()
     
     print("System Specifications:")
@@ -164,40 +177,51 @@ def run_benchmark(duration_minutes=10):
     print("=" * 70)
     print()
     
-    # Start hybrid checker
+    # Start CollatzEngine with appropriate mode
+    engine_cmd = [sys.executable, "CollatzEngine.py"]
+    if mode == 'cpu':
+        engine_cmd.append('cpu')
+    else:
+        engine_cmd.append('gpu')
+    
     checker_process = subprocess.Popen(
-        [sys.executable, "collatz_hybrid.py"],
+        engine_cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
         bufsize=1
     )
     
-    print("[CHECKER] Started hybrid checker")
+    print(f"[ENGINE] Started CollatzEngine in {mode.upper()} mode")
     
-    # Wait 60 seconds before starting auto-tuner
-    print("[WAITING] Waiting 60 seconds for baseline performance...")
-    time.sleep(60)
-    
-    # Start auto-tuner
-    tuner_process = subprocess.Popen(
-        [sys.executable, "auto_tuner.py"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        bufsize=1,
-        stdin=subprocess.PIPE
-    )
-    
-    # Auto-respond to resume prompt if it appears
-    try:
-        tuner_process.stdin.write('n\n')
-        tuner_process.stdin.flush()
-    except:
-        pass
-    
-    print("[TUNER] Started auto-tuner")
+    # Wait 60 seconds before starting auto-tuner (GPU mode only)
+    tuner_process = None
+    if mode == 'gpu':
+        print("[WAITING] Waiting 60 seconds for baseline performance...")
+        time.sleep(60)
+        
+        # Start auto-tuner
+        tuner_process = subprocess.Popen(
+            [sys.executable, "auto_tuner.py"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            stdin=subprocess.PIPE
+        )
+        
+        # Auto-respond to resume prompt if it appears
+        try:
+            tuner_process.stdin.write('n\n')
+            tuner_process.stdin.flush()
+        except:
+            pass
+        
+        print("[TUNER] Started auto-tuner")
+    else:
+        print("[CPU MODE] Skipping auto-tuner (GPU-only feature)")
     print()
+    
     print(f"[RUNNING] Benchmark will run for {duration_minutes} minutes...")
     print("[INFO] You'll see periodic updates below")
     print("=" * 70)
@@ -205,14 +229,15 @@ def run_benchmark(duration_minutes=10):
     
     # Collect data
     results = {
+        "mode": mode,
         "system_specs": specs,
         "benchmark_duration_minutes": duration_minutes,
         "checker_metrics": {},
-        "tuner_configs": [],
-        "tuner_peaks": [],
+        "tuner_configs": [] if mode == 'gpu' else None,
+        "tuner_peaks": [] if mode == 'gpu' else None,
         "raw_output": {
             "checker": [],
-            "tuner": []
+            "tuner": [] if mode == 'gpu' else None
         }
     }
     
@@ -258,11 +283,28 @@ def run_benchmark(duration_minutes=10):
             except:
                 pass
             
-            # Read from tuner (non-blocking)
-            try:
-                if sys.platform != 'win32':
-                    ready, _, _ = select.select([tuner_process.stdout], [], [], 0.1)
-                    if ready:
+            # Read from tuner (non-blocking) - GPU mode only
+            if tuner_process:
+                try:
+                    if sys.platform != 'win32':
+                        ready, _, _ = select.select([tuner_process.stdout], [], [], 0.1)
+                        if ready:
+                            line = tuner_process.stdout.readline()
+                            if line:
+                                line = line.strip()
+                                results["raw_output"]["tuner"].append(line)
+                                parsed = parse_tuner_output(line)
+                                if "config" in parsed:
+                                    results["tuner_configs"].append(parsed["config"])
+                                if "new_peak_rate" in parsed:
+                                    results["tuner_peaks"].append({
+                                        "rate": parsed["new_peak_rate"],
+                                        "timestamp": time.time() - start_time
+                                    })
+                                    print(f"[PEAK] New peak: {parsed['new_peak_rate']:,.0f} odd/s")
+                                if parsed.get("stage_1_complete"):
+                                    print(f"[STAGE 1] Complete! Best: {parsed.get('stage_1_best_rate', 'N/A'):,.0f} odd/s")
+                    else:
                         line = tuner_process.stdout.readline()
                         if line:
                             line = line.strip()
@@ -278,24 +320,8 @@ def run_benchmark(duration_minutes=10):
                                 print(f"[PEAK] New peak: {parsed['new_peak_rate']:,.0f} odd/s")
                             if parsed.get("stage_1_complete"):
                                 print(f"[STAGE 1] Complete! Best: {parsed.get('stage_1_best_rate', 'N/A'):,.0f} odd/s")
-                else:
-                    line = tuner_process.stdout.readline()
-                    if line:
-                        line = line.strip()
-                        results["raw_output"]["tuner"].append(line)
-                        parsed = parse_tuner_output(line)
-                        if "config" in parsed:
-                            results["tuner_configs"].append(parsed["config"])
-                        if "new_peak_rate" in parsed:
-                            results["tuner_peaks"].append({
-                                "rate": parsed["new_peak_rate"],
-                                "timestamp": time.time() - start_time
-                            })
-                            print(f"[PEAK] New peak: {parsed['new_peak_rate']:,.0f} odd/s")
-                        if parsed.get("stage_1_complete"):
-                            print(f"[STAGE 1] Complete! Best: {parsed.get('stage_1_best_rate', 'N/A'):,.0f} odd/s")
-            except:
-                pass
+                except:
+                    pass
             
             # Periodic status update
             if time.time() - last_update > update_interval:
@@ -319,13 +345,14 @@ def run_benchmark(duration_minutes=10):
         print("=" * 70)
         
         # Stop processes
-        try:
-            tuner_process.terminate()
-            time.sleep(2)
-            if tuner_process.poll() is None:
-                tuner_process.kill()
-        except:
-            pass
+        if tuner_process:
+            try:
+                tuner_process.terminate()
+                time.sleep(2)
+                if tuner_process.poll() is None:
+                    tuner_process.kill()
+            except:
+                pass
         
         try:
             checker_process.terminate()
@@ -348,12 +375,12 @@ def run_benchmark(duration_minutes=10):
         results["summary"]["peak_checker_rate_odd_per_sec"] = results["checker_metrics"]["current_rate_odd_per_sec"]
         results["summary"]["peak_checker_rate_effective_per_sec"] = results["checker_metrics"]["current_rate_odd_per_sec"] * 2
     
-    if results["tuner_peaks"]:
+    if results["tuner_peaks"] and len(results["tuner_peaks"]) > 0:
         max_peak = max(results["tuner_peaks"], key=lambda x: x["rate"])
         results["summary"]["peak_tuner_rate_odd_per_sec"] = max_peak["rate"]
         results["summary"]["peak_tuner_rate_effective_per_sec"] = max_peak["rate"] * 2
     
-    if results["tuner_configs"]:
+    if results["tuner_configs"] and len(results["tuner_configs"]) > 0:
         results["summary"]["optimal_config"] = results["tuner_configs"][-1]
     
     return results

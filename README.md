@@ -1,11 +1,12 @@
 # Collatz Engine
 
-A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, featuring adaptive auto-tuning and hybrid CPU+GPU architecture.
+A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, featuring adaptive auto-tuning, hybrid CPU+GPU architecture, and CPU-only fallback mode.
 
 ## Features
 
 - **Hybrid CPU+GPU architecture** - Maximizes throughput using CuPy for CUDA acceleration
-- **Adaptive auto-tuner** - Dynamically optimizes GPU parameters for peak performance
+- **CPU-only mode** - Runs on systems without GPU (automatic fallback)
+- **Adaptive auto-tuner** - Dynamically optimizes GPU and CPU parameters for peak performance
 - **Efficient odd-only checking** - Skips even numbers (trivial cases)
 - **Persistent state** - Resume capability with checkpoint system
 - **Real-time monitoring** - Split-screen display for checker and tuner
@@ -17,18 +18,23 @@ A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, 
 Current benchmarks on mid-range GPU (6GB VRAM):
 - **~10 billion odd/s** (~20 billion effective/s)
 - **572+ trillion numbers** tested over continuous runtime
-- Auto-tuner adapts to any CUDA-capable GPU
+- Auto-tuner adapts to any CUDA-capable GPU or CPU-only system
 
 ## Requirements
 
+### GPU Mode (Recommended)
 - CUDA-capable GPU with recent drivers
 - Python 3.8+
 - CuPy (CUDA acceleration library)
 
+### CPU Mode (Fallback)
+- Python 3.8+
+- No GPU required
+
 ## Installation
 
 ```bash
-# Install dependencies
+# For GPU mode - install CuPy
 pip install cupy-cuda12x  # or cupy-cuda11x for older CUDA versions
 
 # Clone repository
@@ -40,13 +46,28 @@ cd CollatzEngine
 
 ### Option 1: Automated Launcher (Recommended)
 
-Run both the hybrid checker and auto-tuner together with split-screen display:
+Run both the checker and auto-tuner together with split-screen display:
 
 ```bash
 python launcher.py
 ```
 
-### Option 2: Benchmark Mode
+### Option 2: Direct Execution
+
+Run the Collatz Engine directly:
+
+```bash
+# Auto-detect mode (GPU if available, otherwise CPU)
+python CollatzEngine.py
+
+# Force GPU hybrid mode
+python CollatzEngine.py gpu
+
+# Force CPU-only mode
+python CollatzEngine.py cpu
+```
+
+### Option 3: Benchmark Mode
 
 For automated performance testing and results collection:
 
@@ -55,31 +76,21 @@ python benchmark.py
 ```
 
 This will:
+- Auto-detect GPU or CPU mode
 - Collect system specifications automatically
-- Run optimization for a specified duration
+- Run optimization for a specified duration (GPU mode includes auto-tuner)
 - Save all results to a JSON file
-
-### Option 3: Manual Execution
-
-Run components separately:
-
-```bash
-# Terminal 1 - Hybrid Checker
-python collatz_hybrid.py
-
-# Terminal 2 - Auto-Tuner (start after 60 seconds)
-python auto_tuner.py
-```
 
 ## How It Works
 
-### Hybrid Checker (`collatz_hybrid.py`)
-- Tests odd numbers for Collatz convergence
-- Uses GPU for parallel computation
+### Collatz Engine (`CollatzEngine.py`)
+- **GPU Mode**: Tests odd numbers using CUDA acceleration with GPU batching
+- **CPU Mode**: Pure CPU implementation with multiprocessing (uses GPU for batching if available)
 - Maintains persistent state across sessions
 - Reports real-time performance metrics
+- Automatically falls back to CPU mode if GPU unavailable
 
-### Auto-Tuner (`auto_tuner.py`)
+### Auto-Tuner (`auto_tuner.py`) - GPU Mode Only
 - **Stage 1**: Binary search for optimal parameters (60s quick tests)
 - **Stage 2**: Fine-tuning around best configurations (2-min tests)
 - **Stage 3**: Progressive refinement until convergence
@@ -89,6 +100,7 @@ Optimizes:
 - Threads per block
 - Work multiplier
 - Blocks per streaming multiprocessor
+- CPU worker count (for difficult numbers)
 
 ### Launcher (`launcher.py`)
 - Manages both processes automatically

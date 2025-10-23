@@ -1294,16 +1294,47 @@ def run_cpu_mode():
 # ============================================================================
 
 def main():
-    """Main entry point - automatically chooses GPU or CPU mode."""
-    if GPU_AVAILABLE:
-        gpu_config = get_gpu_config()
-        if gpu_config:
-            run_gpu_mode()
+    """Main entry point - choose between GPU hybrid mode or CPU-only mode."""
+    import sys
+    
+    # Check command-line arguments for mode selection
+    mode = None
+    if len(sys.argv) > 1:
+        arg = sys.argv[1].lower()
+        if arg in ['gpu', 'hybrid']:
+            mode = 'gpu'
+        elif arg in ['cpu', 'cpu-only']:
+            mode = 'cpu'
         else:
-            print("GPU detected but initialization failed. Using CPU mode.\n")
-            run_cpu_mode()
+            print("Invalid mode. Use: python CollatzEngine.py [gpu|cpu]")
+            print("  gpu/hybrid  - Use GPU acceleration (default if GPU available)")
+            print("  cpu/cpu-only - Use CPU-only mode")
+            sys.exit(1)
+    
+    # Auto-detect mode if not specified
+    if mode is None:
+        if GPU_AVAILABLE:
+            gpu_config = get_gpu_config()
+            if gpu_config:
+                mode = 'gpu'
+            else:
+                print("GPU detected but initialization failed. Falling back to CPU mode.\n")
+                mode = 'cpu'
+        else:
+            print("No GPU detected. Using CPU-only mode.\n")
+            mode = 'cpu'
+    
+    # Run selected mode
+    if mode == 'gpu':
+        if not GPU_AVAILABLE:
+            print("ERROR: GPU mode requested but no GPU available. Use CPU mode instead.\n")
+            sys.exit(1)
+        gpu_config = get_gpu_config()
+        if not gpu_config:
+            print("ERROR: GPU initialization failed. Use CPU mode instead.\n")
+            sys.exit(1)
+        run_gpu_mode()
     else:
-        print("No GPU detected. Using CPU mode.\n")
         run_cpu_mode()
 
 if __name__ == '__main__':

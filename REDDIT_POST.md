@@ -1,52 +1,55 @@
-# Looking for High-End GPU Volunteers to Benchmark Collatz Conjecture Engine
+# Looking for GPU & CPU Volunteers to Benchmark Collatz Conjecture Engine
 
-**TL;DR:** I've built a highly optimized CUDA-based Collatz Conjecture checker with adaptive auto-tuning. Looking for volunteers with high-end GPUs (4090, H100, H200, etc.) to help benchmark performance across different hardware.
+**TL;DR:** I've built a highly optimized Collatz Conjecture checker with GPU acceleration (CUDA) and CPU-only fallback, plus adaptive auto-tuning. Looking for volunteers with ANY hardware (GPUs, high-core-count CPUs, or both) to help benchmark performance across different systems.
 
 ---
 
 ## About the Project
 
-I've been working on an optimized GPU implementation for exploring the Collatz Conjecture. The engine uses:
+I've been working on an optimized implementation for exploring the Collatz Conjecture. The engine supports:
 
-- **Hybrid CPU+GPU architecture** with CuPy for maximum throughput
-- **Adaptive auto-tuner** that dynamically optimizes GPU parameters (batch size, thread count, work multipliers, blocks per SM)
-- **Efficient odd-only checking** (skips even numbers since they're trivial)
-- **Persistent state** with resume capability and checkpoint system
-- **Real-time performance monitoring** with split-screen display
+- **GPU Hybrid Mode** - Uses CUDA acceleration for maximum throughput (CuPy)
+- **CPU-Only Mode** - Runs on any system without GPU (automatic fallback)
+- **Adaptive auto-tuner** - Dynamically optimizes GPU AND CPU parameters
+- **Efficient odd-only checking** - Skips even numbers (trivial cases)
+- **Persistent state** - Resume capability with checkpoint system
+- **Real-time monitoring** - Split-screen display for checker and tuner
 
-On my GPU (6GB VRAM), I'm currently hitting **~10 billion odd/s** (20 billion effective/s when counting skipped evens). The code is heavily optimized and should scale well to more powerful hardware.
+On my GPU (6GB VRAM), I'm hitting **~10 billion odd/s** (20 billion effective/s). The code auto-detects your hardware and optimizes accordingly.
 
 ---
 
 ## What I'm Looking For
 
-I'm curious how this performs across different GPU architectures! **Any CUDA-capable GPU** is welcome - from budget cards to data center hardware. Every benchmark helps!
+**GPU benchmarks** AND **CPU benchmarks** - I want to understand performance across the full hardware spectrum!
 
-**Especially interested in:**
-- **RTX 4090** (24GB VRAM)
-- **RTX 4080/4070** (12-16GB VRAM)  
-- **RTX 3090/3080** (10-24GB VRAM)
-- **A100** (40GB/80GB VRAM)
-- **H100/H200** (80GB+ VRAM)
-- **Any GTX/RTX/Tesla/Quadro GPU with CUDA support**
+**GPUs of interest:**
+- RTX 4090, 4080, 4070 (latest generation)
+- RTX 3090, 3080, 3070, 3060 (previous gen)
+- RTX 2080, 2070, 2060 (Turing)
+- GTX 1080, 1070, 1060 (Pascal)
+- A100, H100, H200 (datacenter)
+- **Any CUDA-capable GPU!** Even budget/mobile GPUs help!
 
-**But honestly, any CUDA GPU data is valuable!** Even if you have an older GTX 1060, GTX 1660, RTX 2060, or mobile GPU - your results would still help me understand:
-
-1. How well the auto-tuner adapts to different GPU architectures and memory configurations
-2. Performance scaling from budget to flagship hardware
-3. What the theoretical upper limits are for this approach
-4. Whether there are any architecture-specific bottlenecks I haven't discovered yet
-
-**Don't hesitate to contribute even if your GPU seems "too old" or "not powerful enough"** - diverse data points across the entire CUDA ecosystem are incredibly valuable for optimization!
+**CPUs of interest:**
+- Dual CPU servers (2× Xeon, 2× EPYC)
+- High core count CPUs (16+ cores: Threadripper, EPYC, Xeon)
+- Consumer CPUs (AMD Ryzen, Intel Core)
+- **Any CPU!** From laptops to servers!
 
 ---
 
 ## What You'll Need
 
-- **CUDA-capable GPU** with recent drivers
-- **Python 3.8+** 
-- **CuPy** (CUDA acceleration library)
-- **~5-10 minutes** of runtime to get stable numbers
+### GPU Mode
+- CUDA-capable GPU with recent drivers
+- Python 3.8+
+- CuPy (CUDA library)
+- ~5-10 minutes runtime
+
+### CPU Mode
+- **Just Python 3.8+** (no GPU needed!)
+- ~5-10 minutes runtime
 
 ---
 
@@ -58,95 +61,70 @@ I'm curious how this performs across different GPU architectures! **Any CUDA-cap
 # Clone or download the repository
 cd CollatzEngine
 
-# Install dependencies
-pip install cupy-cuda12x  # or cupy-cuda11x depending on your CUDA version
+# For GPU mode - install CuPy
+pip install cupy-cuda12x  # or cupy-cuda11x for older CUDA
+
+# For CPU mode - no extra dependencies needed!
 ```
 
 ### Option 1: Automated Benchmark (Easiest!)
-
-For the simplest experience with automatic results collection:
 
 ```bash
 python benchmark.py
 ```
 
 **What it does:**
-- Automatically collects all your system specifications (GPU model, VRAM, compute capability, etc.)
-- Runs both the hybrid checker and auto-tuner together
-- Monitors performance and collects all metrics
-- Saves everything to a timestamped JSON file you can send back
-- You choose how long to run (default: 10 minutes)
+- Auto-detects GPU or CPU mode
+- Collects system specs (GPU model, VRAM, CPU cores, etc.)
+- Runs optimization (GPU mode includes auto-tuner)
+- Saves results to timestamped JSON file
 
 **What to report:**
-- Just send back the generated `benchmark_results_YYYYMMDD_HHMMSS.json` file!
-- Everything I need is automatically captured
-
-This is the recommended option if you just want to help benchmark without diving into details.
-
----
+- Just send the `benchmark_results_YYYYMMDD_HHMMSS.json` file!
 
 ---
 
 ### Option 2: Using the Launcher (Interactive)
 
-The launcher automatically manages both the hybrid checker and auto-tuner with a clean split-screen display:
-
 ```bash
 python launcher.py
 ```
 
-**What to expect:**
-- The hybrid checker starts first and runs for 60 seconds to establish baseline performance
-- The auto-tuner then starts and begins optimizing GPU parameters
-- You'll see real-time output split into two sections:
-  - **Top section:** Hybrid checker progress (numbers tested, current rate, highest proven value)
-  - **Bottom section:** Auto-tuner status (current configuration being tested, optimization progress)
-- Let it run for **5-10 minutes** to get through Stage 1 optimization
-- Press **Ctrl+C** to stop both processes cleanly
-
-**What to report:**
-- Your GPU model and VRAM
-- The "Current rate" from the hybrid checker (look for the highest stable odd/s value)
-- Any configurations the auto-tuner reports as "[NEW PEAK]"
-- Screenshot or copy/paste of final output would be amazing!
+Split-screen display shows real-time performance and optimization.
 
 ---
 
-### Option 3: Running Scripts Separately (Advanced)
+### Option 3: Direct Execution (Manual Control)
 
-If you prefer more control or the launcher doesn't work on your system:
-
-**Terminal 1 - Hybrid Checker:**
 ```bash
-python collatz_hybrid.py
+# Auto-detect mode (GPU if available, else CPU)
+python CollatzEngine.py
+
+# Force GPU mode
+python CollatzEngine.py gpu
+
+# Force CPU-only mode  
+python CollatzEngine.py cpu
 ```
 
-**Terminal 2 - Auto-Tuner (wait 60 seconds after starting Terminal 1):**
+Then optionally run auto-tuner in second terminal (GPU mode only):
 ```bash
 python auto_tuner.py
 ```
 
-**What to expect:**
-- Terminal 1 shows the main checking progress with session summaries every second
-- Terminal 2 runs optimization cycles, testing different GPU configurations
-- Let both run for **5-10 minutes** minimum
-- Press **Ctrl+C** in each terminal to stop (stop auto-tuner first, then hybrid checker)
-
 **What to report:**
-- Your GPU model and VRAM
-- Final "Current rate" from Terminal 1 (odd/s)
-- Best configuration from Terminal 2 (batch size, threads, work multiplier, blocks per SM)
-- Any interesting observations (crashes, performance anomalies, etc.)
+- Hardware specs (GPU model/VRAM or CPU model/cores)
+- Final performance rate (odd/s)
+- Best auto-tuner config (if using GPU mode)
 
 ---
 
 ## What the Numbers Mean
 
-- **odd/s:** Odd numbers checked per second (this is the raw GPU throughput)
-- **effective/s:** Total numbers conceptually checked per second (odd/s × 2, since even numbers are trivial)
-- **Session tested:** Total numbers checked this run
-- **Total tested:** Cumulative across all runs (uses persistent state)
-- **Highest proven:** Largest starting value verified to reach 1
+- **odd/s:** Odd numbers checked per second (raw throughput)
+- **effective/s:** Total numbers conceptually checked (odd/s × 2, since evens are skipped)
+- **Mode:** GPU hybrid or CPU-only
+- **CPU workers:** Number of CPU cores used for difficult numbers
 
 ---
 

@@ -113,7 +113,7 @@ def main():
     # Start the hybrid checker in the background
     print("Starting Collatz Hybrid Checker...")
     hybrid_process = subprocess.Popen(
-        [sys.executable, os.path.join(script_dir, "collatz_hybrid.py")],
+        [sys.executable, os.path.join(script_dir, "CollatzEngine.py")],
         cwd=script_dir,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
