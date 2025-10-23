@@ -1,0 +1,34 @@
+# State and log files
+autotuner_state.json
+fine_tuning_state.json
+tuning_log.txt
+fine_tuning_log.txt
+session_summary.txt
+random_stats.json
+random_stats_backup.json
+
+# Benchmark results
+benchmark_results_*.json
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
