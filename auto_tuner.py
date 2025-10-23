@@ -121,17 +121,39 @@ def detect_gpu_ranges():
     
     # CPU worker count options (for difficult number processing)
     # Test different worker counts to find optimal CPU utilization
+    # Future-proofed for massive core counts following Moore's Law
     if total_cpu_cores <= 4:
+        # Low-end systems (2020s laptops)
         cpu_workers = [1, 2, 4]
     elif total_cpu_cores <= 8:
+        # Mid-range systems (2020s desktops)
         cpu_workers = [2, 4, 6, 8]
     elif total_cpu_cores <= 16:
+        # High-end consumer (2020s HEDT)
         cpu_workers = [4, 6, 8, 12, 16]
     elif total_cpu_cores <= 32:
+        # Dual CPU / HEDT (2020s servers)
         cpu_workers = [8, 12, 16, 20, 24, 32]
+    elif total_cpu_cores <= 64:
+        # High core count servers (2020s dual Xeon/EPYC)
+        cpu_workers = [16, 24, 32, 40, 48, 64]
+    elif total_cpu_cores <= 128:
+        # Massive servers (2020s-2030s dual high-end EPYC)
+        cpu_workers = [32, 48, 64, 80, 96, 128]
+    elif total_cpu_cores <= 256:
+        # Next-gen datacenter (2030s-2040s)
+        cpu_workers = [64, 96, 128, 160, 192, 256]
+    elif total_cpu_cores <= 512:
+        # Advanced datacenter (2040s-2060s)
+        cpu_workers = [128, 192, 256, 320, 384, 512]
+    elif total_cpu_cores <= 1024:
+        # Extreme systems (2060s-2080s)
+        cpu_workers = [256, 384, 512, 640, 768, 1024]
     else:
-        # High core count systems
-        cpu_workers = [8, 16, 24, 32, min(64, total_cpu_cores)]
+        # Far future theoretical (2080s-2125+)
+        # Scale with core count, test powers of 2 and midpoints
+        base = min(512, total_cpu_cores // 4)
+        cpu_workers = [base, base*2, base*3, base*4, min(total_cpu_cores, base*6), total_cpu_cores]
     
     return {
         'batch_sizes': batch_sizes,
