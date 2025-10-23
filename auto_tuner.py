@@ -2,6 +2,7 @@
 Auto-tuner for Collatz GPU Performance
 Uses adaptive search to find optimal GPU settings quickly
 Automatically detects and tunes for any GPU hardware
+Also optimizes CPU worker count for difficult number processing
 """
 
 import json
@@ -9,6 +10,7 @@ import time
 import os
 from datetime import datetime
 import itertools
+from multiprocessing import cpu_count
 
 try:
     import cupy as cp
@@ -31,9 +33,13 @@ def detect_gpu_ranges():
     vram_gb = mem_info[1] / (1024**3)
     sm_count = props['multiProcessorCount']
     
+    # Detect CPU count for worker tuning
+    total_cpu_cores = cpu_count()
+    
     print(f"Detected GPU: {props['name'].decode()}")
     print(f"VRAM: {vram_gb:.1f} GB")
     print(f"Streaming Multiprocessors: {sm_count}")
+    print(f"CPU Cores: {total_cpu_cores}")
     print()
     
     # VRAM-based scaling (future-proofed for terabytes+)
@@ -113,14 +119,30 @@ def detect_gpu_ranges():
     # Memory percentage options for testing
     mem_percents = list(range(5, max_mem + 1, 5))  # 5%, 10%, 15%, ... up to max_mem
     
+    # CPU worker count options (for difficult number processing)
+    # Test different worker counts to find optimal CPU utilization
+    if total_cpu_cores <= 4:
+        cpu_workers = [1, 2, 4]
+    elif total_cpu_cores <= 8:
+        cpu_workers = [2, 4, 6, 8]
+    elif total_cpu_cores <= 16:
+        cpu_workers = [4, 6, 8, 12, 16]
+    elif total_cpu_cores <= 32:
+        cpu_workers = [8, 12, 16, 20, 24, 32]
+    else:
+        # High core count systems
+        cpu_workers = [8, 16, 24, 32, min(64, total_cpu_cores)]
+    
     return {
         'batch_sizes': batch_sizes,
         'thread_multipliers': thread_mults,
         'work_multipliers': work_mults,
         'blocks_per_sm': blocks_per_sm,
         'memory_percents': mem_percents,
+        'cpu_workers': cpu_workers,
         'vram_gb': vram_gb,
-        'sm_count': sm_count
+        'sm_count': sm_count,
+        'cpu_cores': total_cpu_cores
     }
 
 TEST_DURATION = 120  # Seconds per configuration test (2 minutes - faster tuning)
@@ -232,7 +254,7 @@ def get_test_rate(duration=120, quick_test=False):
         samples.append(sample_rate)
         
         # Show progress with better formatting
-    print(f"\n  Sample {i+1}/{num_samples}: {sample_rate:,.0f} odd/s", end='', flush=True)
+        print(f"\n  Sample {i+1}/{num_samples}: {sample_rate:,.0f} odd/s", end='', flush=True)
         
         # Early success detection for quick tests
         if quick_test and len(samples) >= 2:
@@ -270,19 +292,20 @@ def log_result(config, rate):
     with open(LOG_FILE, 'a') as f:
         f.write(f"[{datetime.now().isoformat()}] Rate: {rate:,.0f}/s | Config: {config}\n")
 
-def test_config(batch, thread_mult, work_mult, blocks_sm, iteration, total, test_duration=120, quick_test=False):
+def test_config(batch, thread_mult, work_mult, blocks_sm, cpu_workers, iteration, total, test_duration=120, quick_test=False):
     """Test a single configuration and return its rate.
     If quick_test=True, does a 60s quick validation first."""
     test_config = {
         "work_multiplier": work_mult,
         "threads_per_block_multiplier": thread_mult,
         "blocks_per_sm": blocks_sm,
-        "batch_size_override": batch
+        "batch_size_override": batch,
+        "cpu_workers": cpu_workers
     }
     
     test_label = "QUICK" if quick_test else "FULL"
     print(f"\n[{iteration}/{total}] {test_label} Testing ({test_duration}s):")
-    print(f"  Batch: {batch:,} | Threads: {thread_mult} | Work: {work_mult} | Blocks/SM: {blocks_sm}")
+    print(f"  Batch: {batch:,} | Threads: {thread_mult} | Work: {work_mult} | Blocks/SM: {blocks_sm} | CPU Workers: {cpu_workers}")
     
     save_tuning(test_config)
     time.sleep(8)  # Reduced from 12s - wait for config reload
@@ -291,7 +314,7 @@ def test_config(batch, thread_mult, work_mult, blocks_sm, iteration, total, test
     rate = get_test_rate(test_duration, quick_test)
     
     if rate > 0:
-    print(f" [OK] {rate:,.0f} odd/s")
+        print(f" [OK] {rate:,.0f} odd/s")
     else:
         print(f" [FAILED] - Config causes crash/hang")
     
@@ -327,7 +350,7 @@ def binary_search_param(param_name, param_list, baseline_config, iteration_offse
         
         # Quick test first (60s)
         rate, _ = test_config(
-            config['batch'], config['thread'], config['work'], config['blocks'],
+            config['batch'], config['thread'], config['work'], config['blocks'], config['cpu_workers'],
             iteration_offset + tests_done, "binary", QUICK_TEST_DURATION, quick_test=True
         )
         
@@ -351,7 +374,7 @@ def binary_search_param(param_name, param_list, baseline_config, iteration_offse
     rate = get_test_rate(test_duration)
     
     if rate > 0:
-    print(f" {rate:,.0f} odd/s")
+        print(f" {rate:,.0f} odd/s")
     else:
         print(f" FAILED - Config causes crash/hang")
     
@@ -399,8 +422,14 @@ def adaptive_search():
     WORK_MULTIPLIERS = gpu_ranges['work_multipliers']
     MEMORY_PERCENTS = gpu_ranges['memory_percents']
     BLOCKS_PER_SM = gpu_ranges['blocks_per_sm']
+    CPU_WORKERS = gpu_ranges['cpu_workers']
     
     print(f"Tuning ranges for this GPU:")
+    print(f"  Batch sizes: {len(BATCH_SIZES)} options")
+    print(f"  Thread multipliers: {THREAD_MULTIPLIERS}")
+    print(f"  Work multipliers: {len(WORK_MULTIPLIERS)} options")
+    print(f"  Blocks per SM: {BLOCKS_PER_SM}")
+    print(f"  CPU workers: {CPU_WORKERS}")
     print(f"  Batch sizes: {len(BATCH_SIZES)} options ({BATCH_SIZES[0]:,} to {BATCH_SIZES[-1]:,})")
     print(f"  Thread multipliers: {len(THREAD_MULTIPLIERS)} options ({THREAD_MULTIPLIERS[0]} to {THREAD_MULTIPLIERS[-1]})")
     print(f"  Work multipliers: {len(WORK_MULTIPLIERS)} options ({WORK_MULTIPLIERS[0]} to {WORK_MULTIPLIERS[-1]})")
@@ -418,7 +447,7 @@ def adaptive_search():
         cycles_without_improvement = saved_state.get('cycles_without_improvement', 0)
         refinement_level = saved_state.get('refinement_level', 1.0)
         print(f"[RESUME] Resuming from stage {current_stage}, iteration {iteration}")
-    print(f"   Best rate so far: {best_rate:,.0f} odd/s")
+        print(f"   Best rate so far: {best_rate:,.0f} odd/s")
         if current_stage == 3:
             print(f"   Refinement level: {refinement_level:.3f}")
         print()
@@ -429,7 +458,8 @@ def adaptive_search():
             'batch': BATCH_SIZES[len(BATCH_SIZES)//2],
             'thread': THREAD_MULTIPLIERS[len(THREAD_MULTIPLIERS)//2],
             'work': WORK_MULTIPLIERS[len(WORK_MULTIPLIERS)//2],
-            'blocks': BLOCKS_PER_SM[len(BLOCKS_PER_SM)//2]
+            'blocks': BLOCKS_PER_SM[len(BLOCKS_PER_SM)//2],
+            'cpu_workers': CPU_WORKERS[len(CPU_WORKERS)//2]
         }
         iteration = 0
         current_stage = 1
@@ -454,16 +484,20 @@ def adaptive_search():
         best_rate, best_blocks = binary_search_param('blocks', BLOCKS_PER_SM, baseline, iteration)
         iteration += 5
         
+        best_rate, best_cpu_workers = binary_search_param('cpu_workers', CPU_WORKERS, baseline, iteration)
+        iteration += 5
+        
         # Build best config
         best_config = {
             "work_multiplier": best_work,
             "threads_per_block_multiplier": best_thread,
             "blocks_per_sm": best_blocks,
-            "batch_size_override": best_batch
+            "batch_size_override": best_batch,
+            "cpu_workers": best_cpu_workers
         }
         
-    print(f"\n[STAGE 1 COMPLETE] Best rate: {best_rate:,.0f} odd/s")
-        print(f"   Config: batch={best_batch:,}, thread={best_thread}, work={best_work}, blocks={best_blocks}")
+        print(f"\n[STAGE 1 COMPLETE] Best rate: {best_rate:,.0f} odd/s")
+        print(f"   Config: batch={best_batch:,}, thread={best_thread}, work={best_work}, blocks={best_blocks}, cpu_workers={best_cpu_workers}")
         
         # Mark stage 1 complete
         current_stage = 2
@@ -474,6 +508,7 @@ def adaptive_search():
         best_thread = best_config['threads_per_block_multiplier']
         best_work = best_config['work_multiplier']
         best_blocks = best_config['blocks_per_sm']
+        best_cpu_workers = best_config.get('cpu_workers', CPU_WORKERS[len(CPU_WORKERS)//2])
     
     # Stage 2: Fine-tune around best values (skip if already completed)
     if current_stage <= 2:
@@ -491,7 +526,7 @@ def adaptive_search():
         # Test combinations of top parameters
         for batch, work in itertools.product(set(batch_fine), set(work_fine)):
             iteration += 1
-            rate, config = test_config(batch, best_thread, work, best_blocks, iteration, "inf", TEST_DURATION)
+            rate, config = test_config(batch, best_thread, work, best_blocks, best_cpu_workers, iteration, "inf", TEST_DURATION)
             if rate > best_rate:
                 best_rate = rate
                 best_config = config
@@ -507,6 +542,7 @@ def adaptive_search():
         best_thread = best_config['threads_per_block_multiplier']
         best_work = best_config['work_multiplier']
         best_blocks = best_config['blocks_per_sm']
+        best_cpu_workers = best_config.get('cpu_workers', best_cpu_workers)
     
     print("\n" + "=" * 70)
     print("STAGE 1 & 2 COMPLETE - ENTERING PROGRESSIVE REFINEMENT")
@@ -527,6 +563,7 @@ def adaptive_search():
     best_thread = best_config['threads_per_block_multiplier']
     best_work = best_config['work_multiplier']
     best_blocks = best_config['blocks_per_sm']
+    best_cpu_workers = best_config.get('cpu_workers', CPU_WORKERS[len(CPU_WORKERS)//2])
     
     cycles_without_improvement = 0
     max_cycles_without_improvement = 30
@@ -550,35 +587,40 @@ def adaptive_search():
         
         iteration += 1
         
-        # Generate variations scaled by refinement level (no memory param)
+        # Generate variations scaled by refinement level
+        # CPU worker variations (only test ±1 or ±2 workers)
+        cpu_adj = max(1, int(2 * refinement_level))
         test_variations = [
             # Batch variations
-            (best_batch + batch_adj, best_thread, best_work, best_blocks),
-            (best_batch - batch_adj, best_thread, best_work, best_blocks),
-            (best_batch + batch_adj//2, best_thread, best_work, best_blocks),
-            (best_batch - batch_adj//2, best_thread, best_work, best_blocks),
+            (best_batch + batch_adj, best_thread, best_work, best_blocks, best_cpu_workers),
+            (best_batch - batch_adj, best_thread, best_work, best_blocks, best_cpu_workers),
+            (best_batch + batch_adj//2, best_thread, best_work, best_blocks, best_cpu_workers),
+            (best_batch - batch_adj//2, best_thread, best_work, best_blocks, best_cpu_workers),
             # Work variations
-            (best_batch, best_thread, best_work + work_adj, best_blocks),
-            (best_batch, best_thread, best_work - work_adj, best_blocks),
-            (best_batch, best_thread, best_work + work_adj//2, best_blocks),
-            (best_batch, best_thread, best_work - work_adj//2, best_blocks),
+            (best_batch, best_thread, best_work + work_adj, best_blocks, best_cpu_workers),
+            (best_batch, best_thread, best_work - work_adj, best_blocks, best_cpu_workers),
+            (best_batch, best_thread, best_work + work_adj//2, best_blocks, best_cpu_workers),
+            (best_batch, best_thread, best_work - work_adj//2, best_blocks, best_cpu_workers),
             # Thread variations
-            (best_batch, best_thread + thread_adj, best_work, best_blocks),
-            (best_batch, best_thread - thread_adj, best_work, best_blocks),
+            (best_batch, best_thread + thread_adj, best_work, best_blocks, best_cpu_workers),
+            (best_batch, best_thread - thread_adj, best_work, best_blocks, best_cpu_workers),
             # Blocks variations
-            (best_batch, best_thread, best_work, best_blocks + 1),
-            (best_batch, best_thread, best_work, best_blocks - 1),
+            (best_batch, best_thread, best_work, best_blocks + 1, best_cpu_workers),
+            (best_batch, best_thread, best_work, best_blocks - 1, best_cpu_workers),
+            # CPU worker variations
+            (best_batch, best_thread, best_work, best_blocks, best_cpu_workers + cpu_adj),
+            (best_batch, best_thread, best_work, best_blocks, best_cpu_workers - cpu_adj),
             # Combined variations
-            (best_batch + batch_adj, best_thread, best_work + work_adj, best_blocks),
-            (best_batch - batch_adj, best_thread, best_work - work_adj, best_blocks),
-            (best_batch + batch_adj//2, best_thread + thread_adj, best_work, best_blocks),
-            (best_batch - batch_adj//2, best_thread - thread_adj, best_work, best_blocks),
-            (best_batch, best_thread + thread_adj, best_work + work_adj, best_blocks),
-            (best_batch, best_thread - thread_adj, best_work - work_adj, best_blocks),
+            (best_batch + batch_adj, best_thread, best_work + work_adj, best_blocks, best_cpu_workers),
+            (best_batch - batch_adj, best_thread, best_work - work_adj, best_blocks, best_cpu_workers),
+            (best_batch + batch_adj//2, best_thread + thread_adj, best_work, best_blocks, best_cpu_workers),
+            (best_batch - batch_adj//2, best_thread - thread_adj, best_work, best_blocks, best_cpu_workers),
+            (best_batch, best_thread + thread_adj, best_work + work_adj, best_blocks, best_cpu_workers),
+            (best_batch, best_thread - thread_adj, best_work - work_adj, best_blocks, best_cpu_workers),
         ]
         
         # Test each variation
-        for batch, thread, work, blocks in test_variations:
+        for batch, thread, work, blocks, cpu_workers in test_variations:
             # Skip invalid values
             if batch < 5_000_000 or batch > 200_000_000:
                 continue
@@ -588,9 +630,11 @@ def adaptive_search():
                 continue
             if blocks < 1 or blocks > 12:
                 continue
+            if cpu_workers < 1 or cpu_workers > cpu_count():
+                continue
             
             iteration += 1
-            rate, config = test_config(batch, thread, work, blocks, iteration, "inf", test_duration)
+            rate, config = test_config(batch, thread, work, blocks, cpu_workers, iteration, "inf", test_duration)
             if rate > best_rate:
                 old_rate = best_rate
                 best_rate = rate
@@ -599,10 +643,11 @@ def adaptive_search():
                 best_thread = thread
                 best_work = work
                 best_blocks = blocks
+                best_cpu_workers = cpu_workers
                 cycle_improved = True
                 improvement_pct = ((rate - old_rate) / old_rate * 100) if old_rate > 0 else 0
                 print(f"  [NEW PEAK] {rate:,.0f} odd/s [+{improvement_pct:.2f}%]")
-                print(f"     Config: Batch={batch:,}, Thread={thread}, Work={work}, Blocks={blocks}")
+                print(f"     Config: Batch={batch:,}, Thread={thread}, Work={work}, Blocks={blocks}, CPU Workers={cpu_workers}")
                 
                 # Reset refinement level when improvement found (explore neighborhood)
                 refinement_level = 1.0
@@ -622,8 +667,8 @@ def adaptive_search():
             save_state(3, iteration, best_rate, best_config, baseline, cycles_without_improvement)
         
         # Status report
-    print(f"\n  Current peak: {best_rate:,.0f} odd/s")
-        print(f"  Best config: Batch={best_batch:,}, Thread={best_thread}, Work={best_work}, Blocks={best_blocks}")
+        print(f"\n  Current peak: {best_rate:,.0f} odd/s")
+        print(f"  Best config: Batch={best_batch:,}, Thread={best_thread}, Work={best_work}, Blocks={best_blocks}, CPU Workers={best_cpu_workers}")
         
         # Check for convergence
         if cycles_without_improvement >= max_cycles_without_improvement:

@@ -197,7 +197,8 @@ def get_gpu_config():
                 'threads_per_block_multiplier': 8,
                 'blocks_per_sm': 4,
                 'memory_usage_percent': 5,
-                'batch_size_override': None
+                'batch_size_override': None,
+                'cpu_workers': None  # None = auto-detect, or specific number
             }
         
         device = cp.cuda.Device()
@@ -238,7 +239,8 @@ def get_gpu_config():
             'cuda_cores': sm_count * 128,
             'name': props['name'].decode(),
             'vram_total': mem_info[1],
-            'vram_free': mem_info[0]
+            'vram_free': mem_info[0],
+            'tuning': tuning  # Include tuning config for CPU workers
         }
     except Exception as e:
         print(f"GPU initialization failed: {e}")
@@ -720,8 +722,16 @@ def run_gpu_mode():
     batch_size = gpu_config['batch_size']
     threads_per_block = gpu_config['threads_per_block']
     
-    num_cpu_workers = min(cpu_count(), 16)
-    print(f"\nCPU Workers: {num_cpu_workers} (for difficult numbers)")
+    # Get CPU worker count from tuning config or auto-detect
+    tuning = gpu_config.get('tuning', {})
+    cpu_workers_config = tuning.get('cpu_workers', None)
+    
+    if cpu_workers_config is not None:
+        num_cpu_workers = min(cpu_workers_config, cpu_count())  # Cap at actual CPU count
+        print(f"\nCPU Workers: {num_cpu_workers} (configured via tuning)")
+    else:
+        num_cpu_workers = min(cpu_count(), 16)
+        print(f"\nCPU Workers: {num_cpu_workers} (auto-detected, for difficult numbers)")
     
     # Use direct multiprocessing.Queue instead of Manager().Queue() for less overhead
     cpu_task_queue = MPQueue()
@@ -1011,9 +1021,16 @@ def run_gpu_accelerated_cpu_mode(gpu_config, highest_proven, total_tested, previ
     batch_size = gpu_config['batch_size']
     threads_per_block = gpu_config['threads_per_block']
     
-    # CPU workers for difficult numbers
-    num_cpu_workers = min(cpu_count(), 16)
-    print(f"CPU Workers: {num_cpu_workers} (for difficult numbers)")
+    # Get CPU worker count from tuning config or auto-detect
+    tuning = gpu_config.get('tuning', {})
+    cpu_workers_config = tuning.get('cpu_workers', None)
+    
+    if cpu_workers_config is not None:
+        num_cpu_workers = min(cpu_workers_config, cpu_count())  # Cap at actual CPU count
+        print(f"CPU Workers: {num_cpu_workers} (configured via tuning)")
+    else:
+        num_cpu_workers = min(cpu_count(), 16)
+        print(f"CPU Workers: {num_cpu_workers} (auto-detected, for difficult numbers)")
     
     # Use direct multiprocessing.Queue instead of Manager().Queue() for less overhead
     cpu_task_queue = MPQueue()
