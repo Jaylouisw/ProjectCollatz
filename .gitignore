@@ -6,6 +6,12 @@ fine_tuning_log.txt
 session_summary.txt
 random_stats.json
 random_stats_backup.json
+reddit_post.md
+# User profile (private)
+user_profile.json
+
+# Contributions can be shared but don't commit by default
+# contributions.json
 
 # Benchmark results
 benchmark_results_*.json

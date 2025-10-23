@@ -1,0 +1,11 @@
+# Example: benchmark file naming
+# This is a placeholder to ensure the benchmarks/ directory is tracked by Git
+# Community members: Add your benchmark files here!
+
+# Acceptable filenames:
+# - benchmark_RTX4090_20251023.json
+# - benchmark_RTX3060Ti_20251023.json  
+# - benchmark_A100_20251023_datacenter.json
+
+# Pull requests should ONLY add benchmark JSON files to this directory
+# No other files or directories should be modified

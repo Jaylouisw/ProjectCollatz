@@ -32,6 +32,14 @@ except ImportError:
     GPU_AVAILABLE = False
     cp = None
 
+# Import contribution tracker
+try:
+    from contribution_tracker import add_contribution
+    CONTRIBUTION_TRACKING = True
+except ImportError:
+    CONTRIBUTION_TRACKING = False
+    add_contribution = None
+
 # Configuration
 CONFIG_FILE = "collatz_config.json"
 COUNTEREXAMPLE_FILE = "counterexamples.txt"
@@ -110,7 +118,7 @@ def load_config():
             print(f"[WARNING] Config load failed: {e}")
     return 0, 0, 0, 0
 
-def save_config(highest_proven, total_tested, total_runtime_seconds=None, max_steps_ever=None):
+def save_config(highest_proven, total_tested, total_runtime_seconds=None, max_steps_ever=None, record_contribution=False, session_tested=0):
     """Save current progress - with backwards protection."""
     try:
         # Load existing config to check for backwards movement
@@ -141,6 +149,14 @@ def save_config(highest_proven, total_tested, total_runtime_seconds=None, max_st
         # Track max steps ever seen across all sessions
         if max_steps_ever is not None:
             existing_max_steps = max(existing_max_steps, max_steps_ever)
+        
+        # Record contribution if requested
+        if record_contribution and CONTRIBUTION_TRACKING and session_tested > 0:
+            try:
+                username = add_contribution(highest_proven, total_tested, session_tested, total_runtime_seconds)
+                print(f"[CONTRIBUTION] Recorded for {username}")
+            except Exception as e:
+                print(f"[WARNING] Could not record contribution: {e}")
         
         config = {
             'highest_proven': int(highest_proven),
@@ -894,7 +910,7 @@ def run_gpu_mode():
         if session_tested > 0:
             session_elapsed = time.time() - session_start_time
             total_runtime = previous_total_runtime + session_elapsed
-            save_config(highest_proven, total_tested, total_runtime, max_steps_ever)
+            save_config(highest_proven, total_tested, total_runtime, max_steps_ever, record_contribution=True, session_tested=session_tested)
             elapsed = time.time() - start_time
             rate = session_tested / elapsed if elapsed > 0 else 0
             

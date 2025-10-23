@@ -10,6 +10,7 @@ A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, 
 - **Persistent state** - Resume capability with checkpoint system
 - **Real-time monitoring** - Split-screen display for checker and tuner
 - **Multi-stage optimization** - Binary search + fine-tuning + progressive refinement
+- **Contribution tracking** - Track and share verification progress across a distributed network
 
 ## Performance
 
@@ -94,6 +95,54 @@ Optimizes:
 - Provides unified split-screen display
 - Handles graceful shutdown
 
+### Contribution Tracker (`contribution_tracker.py`)
+- Records verification contributions from each user
+- Tracks highest values proven by each contributor
+- Creates a leaderboard of all participants
+- Export and merge contributions from multiple users
+- Build a distributed verification network
+
+## Contribution Tracking
+
+The engine automatically tracks your contributions to help build a distributed verification network:
+
+### First Run Setup
+On first run, you'll be prompted to set up your contributor profile:
+- Choose a username/alias (or use auto-generated ID)
+- Optional: Enter your GPU name
+- Your contributions are tracked locally
+
+### View Leaderboard
+```bash
+python contribution_tracker.py leaderboard
+```
+
+Shows:
+- Total contributors
+- Numbers tested by each user
+- Runtime contributions
+- Highest values proven
+
+### Share Your Contributions
+```bash
+python contribution_tracker.py export
+```
+
+Creates a shareable JSON file with your verification results.
+
+### Merge Contributions
+```bash
+python contribution_tracker.py merge contributions_export.json
+```
+
+Combine contributions from multiple users to build a global leaderboard.
+
+### Privacy
+- Machine IDs are hashed for privacy
+- You choose your public username
+- Contribution files can be shared to prove verification ranges
+- User profile stays local unless you choose to share
+
 ## Configuration Files
 
 - `collatz_config.json` - Main checker configuration
@@ -122,7 +171,22 @@ This simple rule has been verified for enormous numbers but remains unproven mat
 
 ## License
 
-[Choose your license]
+Copyright (c) 2025 Jay (CollatzEngine)
+
+This work is licensed under a [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](http://creativecommons.org/licenses/by-nc-sa/4.0/).
+
+[![CC BY-NC-SA 4.0](https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png)](http://creativecommons.org/licenses/by-nc-sa/4.0/)
+
+**You are free to:**
+- **Share** — copy and redistribute the material in any medium or format
+- **Adapt** — remix, transform, and build upon the material
+
+**Under the following terms:**
+- **Attribution** — You must give appropriate credit to Jay (CollatzEngine), provide a link to the license, and indicate if changes were made.
+- **NonCommercial** — You may not use the material for commercial purposes.
+- **ShareAlike** — If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.
+
+See the [LICENSE](LICENSE) file for full details.
 
 ## Acknowledgments
 
