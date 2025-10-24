@@ -303,7 +303,7 @@ def run_benchmark(duration_minutes=10):
                 print("\n[ERROR] Hybrid checker process died unexpectedly!")
                 break
             
-            if tuner_process.poll() is not None:
+            if tuner_process is not None and tuner_process.poll() is not None:
                 print("\n[WARNING] Auto-tuner process ended")
             
             # Read from checker (non-blocking)
