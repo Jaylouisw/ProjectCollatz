@@ -3,7 +3,7 @@ Collatz Engine Benchmark Script
 Automatically collects system specs, runs optimization, and saves results
 Supports both GPU hybrid mode and CPU-only mode
 
-Copyright (c) 2025 Jay (CollatzEngine)
+Copyright (c) 2025 Jay Wenden (CollatzEngine)
 Licensed under CC BY-NC-SA 4.0
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 """
@@ -41,28 +41,43 @@ def get_system_specs():
         "cpu_count": os.cpu_count(),
     }
     
-    # GPU info
+    # GPU info - detect all GPUs
     if GPU_AVAILABLE:
         try:
-            device = cp.cuda.Device()
-            props = cp.cuda.runtime.getDeviceProperties(device.id)
-            mem_info = device.mem_info
+            gpu_count = cp.cuda.runtime.getDeviceCount()
+            specs["gpu_count"] = gpu_count
+            specs["gpus"] = []
             
-            specs["gpu"] = {
-                "name": props['name'].decode() if isinstance(props['name'], bytes) else props['name'],
-                "vram_total_gb": round(mem_info[1] / (1024**3), 2),
-                "vram_free_gb": round(mem_info[0] / (1024**3), 2),
-                "compute_capability": f"{props['major']}.{props['minor']}",
-                "multiprocessor_count": props['multiProcessorCount'],
-                "clock_rate_mhz": props['clockRate'] / 1000,
-                "memory_clock_rate_mhz": props['memoryClockRate'] / 1000,
-                "memory_bus_width": props['memoryBusWidth'],
-                "max_threads_per_block": props['maxThreadsPerBlock'],
-                "max_threads_per_multiprocessor": props['maxThreadsPerMultiProcessor'],
-            }
+            for i in range(gpu_count):
+                with cp.cuda.Device(i):
+                    props = cp.cuda.runtime.getDeviceProperties(i)
+                    mem_info = cp.cuda.Device(i).mem_info
+                    
+                    gpu_info = {
+                        "id": i,
+                        "name": props['name'].decode() if isinstance(props['name'], bytes) else props['name'],
+                        "vram_total_gb": round(mem_info[1] / (1024**3), 2),
+                        "vram_free_gb": round(mem_info[0] / (1024**3), 2),
+                        "compute_capability": f"{props['major']}.{props['minor']}",
+                        "multiprocessor_count": props['multiProcessorCount'],
+                        "clock_rate_mhz": props['clockRate'] / 1000,
+                        "memory_clock_rate_mhz": props['memoryClockRate'] / 1000,
+                        "memory_bus_width": props['memoryBusWidth'],
+                        "max_threads_per_block": props['maxThreadsPerBlock'],
+                        "max_threads_per_multiprocessor": props['maxThreadsPerMultiProcessor'],
+                    }
+                    specs["gpus"].append(gpu_info)
+            
+            # Keep backward compatibility with single GPU field (primary GPU)
+            if gpu_count > 0:
+                specs["gpu"] = specs["gpus"][0]
         except Exception as e:
+            specs["gpu_count"] = 0
+            specs["gpus"] = []
             specs["gpu"] = {"error": str(e)}
     else:
+        specs["gpu_count"] = 0
+        specs["gpus"] = []
         specs["gpu"] = {"error": "GPU not available"}
     
     return specs
@@ -170,14 +185,22 @@ def run_benchmark(duration_minutes=10):
         print("  Run launcher.py to optimize before benchmarking.")
     print()
     
-    # Determine mode
+    # Determine mode and detect all GPUs
     mode = 'cpu'
     if GPU_AVAILABLE:
         try:
-            device = cp.cuda.Device()
-            props = cp.cuda.runtime.getDeviceProperties(device.id)
+            gpu_count = cp.cuda.runtime.getDeviceCount()
             mode = 'gpu'
-            print(f"Mode: GPU Hybrid (detected {props['name'].decode()})")
+            if gpu_count > 1:
+                print(f"Mode: GPU Hybrid (detected {gpu_count} GPUs - Multi-GPU)")
+                for i in range(gpu_count):
+                    with cp.cuda.Device(i):
+                        props = cp.cuda.runtime.getDeviceProperties(i)
+                        print(f"  [{i}] {props['name'].decode()}")
+            else:
+                device = cp.cuda.Device()
+                props = cp.cuda.runtime.getDeviceProperties(device.id)
+                print(f"Mode: GPU Hybrid (detected {props['name'].decode()})")
         except:
             print("Mode: CPU-only (GPU detected but initialization failed)")
     else:

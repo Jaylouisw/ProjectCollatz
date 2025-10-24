@@ -14,11 +14,9 @@ diagnostic_report.json
 # User profile (private)
 user_profile.json
 collatz_config.json
+gpu_tuning.json
 # Contributions can be shared but don't commit by default
 # contributions.json
-
-# Benchmark results
-benchmark_results_*.json
 
 # Python cache
 __pycache__/

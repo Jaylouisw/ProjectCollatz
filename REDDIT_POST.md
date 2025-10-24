@@ -8,14 +8,16 @@
 
 I've been working on an optimized implementation for exploring the Collatz Conjecture. The engine supports:
 
+- **Multi-GPU Support** - Automatically detects and utilizes all available GPUs
 - **GPU Hybrid Mode** - Uses CUDA acceleration for maximum throughput (CuPy)
 - **CPU-Only Mode** - Runs on any system without GPU (automatic fallback)
+- **Heterogeneous GPU Support** - Optimizes for systems with different GPUs
 - **Adaptive auto-tuner** - Dynamically optimizes GPU AND CPU parameters
 - **Efficient odd-only checking** - Skips even numbers (trivial cases)
 - **Persistent state** - Resume capability with checkpoint system
 - **Real-time monitoring** - Split-screen display for checker and tuner
 
-On my GPU (6GB VRAM), I'm hitting **~10 billion odd/s** (20 billion effective/s). The code auto-detects your hardware and optimizes accordingly.
+On my GPU (6GB VRAM), I'm hitting **~10 billion odd/s** (20 billion effective/s). Multi-GPU systems can achieve even higher throughput! The code auto-detects your hardware and optimizes accordingly.
 
 ---
 
@@ -29,6 +31,7 @@ On my GPU (6GB VRAM), I'm hitting **~10 billion odd/s** (20 billion effective/s)
 - RTX 2080, 2070, 2060 (Turing)
 - GTX 1080, 1070, 1060 (Pascal)
 - A100, H100, H200 (datacenter)
+- **Multi-GPU systems** (2×, 4×, or more GPUs)
 - **Any CUDA-capable GPU!** Even budget/mobile GPUs help!
 
 **CPUs of interest:**
@@ -74,10 +77,11 @@ python benchmark.py
 ```
 
 **What it does:**
-- Auto-detects GPU or CPU mode
+- Auto-detects GPU or CPU mode (including multi-GPU systems)
 - Checks if system needs optimization
-- Collects system specs (GPU model, VRAM, CPU cores, etc.)
+- Collects system specs (GPU models, VRAM, CPU cores, etc.)
 - Runs optimization (GPU mode auto-tuner if not yet optimized)
+- Multi-GPU systems: Tunes conservatively for heterogeneous configurations
 - Tracks peak performance rates accurately
 - Saves results to timestamped JSON file in `benchmarks/` folder
 

@@ -4,7 +4,7 @@ Uses adaptive search to find optimal GPU settings quickly
 Automatically detects and tunes for any GPU hardware
 Also optimizes CPU worker count for difficult number processing
 
-Copyright (c) 2025 Jay (CollatzEngine)
+Copyright (c) 2025 Jay Wenden (CollatzEngine)
 Licensed under CC BY-NC-SA 4.0
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 """

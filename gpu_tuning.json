@@ -1,5 +1,5 @@
 {
-    "work_multiplier": 962,
+    "work_multiplier": 1000,
     "threads_per_block_multiplier": 11,
     "blocks_per_sm": 4,
     "batch_size_override": 22000000,

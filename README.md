@@ -6,9 +6,11 @@ A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, 
 
 ## Features
 
+- **Multi-GPU support** - Automatically detects and uses all available GPUs in parallel
 - **Hybrid CPU+GPU architecture** - Maximizes throughput using CuPy for CUDA acceleration
 - **CPU-only mode** - Runs on systems without GPU (automatic fallback)
 - **Adaptive auto-tuner** - Dynamically optimizes GPU and CPU parameters for peak performance
+- **Heterogeneous GPU support** - Works with different GPU models simultaneously
 - **Comprehensive error handling** - Catches hardware issues, missing libraries, driver problems
 - **Efficient odd-only checking** - Skips even numbers (trivial cases)
 - **Persistent state** - Resume capability with checkpoint system
@@ -27,9 +29,10 @@ Current benchmarks on mid-range GPU (6GB VRAM):
 ## Requirements
 
 ### GPU Mode (Recommended)
-- CUDA-capable GPU with recent drivers
+- One or more CUDA-capable GPUs with recent drivers
 - Python 3.8+
 - CuPy (CUDA acceleration library)
+- **Multi-GPU**: Automatically detected and utilized (scales linearly)
 
 ### CPU Mode (Fallback)
 - Python 3.8+
@@ -126,13 +129,17 @@ This will:
 ## How It Works
 
 ### Collatz Engine (`CollatzEngine.py`)
+- **Multi-GPU Mode**: Automatically detects and uses all GPUs in parallel with workload distribution
 - **GPU Mode**: Tests odd numbers using CUDA acceleration with GPU batching
-- **CPU Mode**: Pure CPU implementation with multiprocessing (uses GPU for batching if available)
+- **CPU Mode**: Pure CPU implementation with multiprocessing
+- **Heterogeneous support**: Works with different GPU models (uses lowest VRAM as baseline)
 - Maintains persistent state across sessions
 - Reports real-time performance metrics
 - Automatically falls back to CPU mode if GPU unavailable
 
 ### Auto-Tuner (`auto_tuner.py`) - GPU Mode Only
+- **Multi-GPU tuning**: Detects all GPUs and tunes for optimal multi-GPU performance
+- **Conservative tuning**: Uses lowest VRAM GPU as baseline for heterogeneous systems
 - **Real-time performance measurement**: Reads live stats every 0.5 seconds for accurate rate calculation
 - **Stage 1**: Binary search for optimal parameters (60s quick tests)
 - **Stage 2**: Fine-tuning around best configurations (2-min tests)

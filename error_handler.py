@@ -2,7 +2,7 @@
 Error Handler and Logger for Collatz Engine
 Catches and logs hardware issues, missing libraries, driver problems, etc.
 
-Copyright (c) 2025 Jay (CollatzEngine)
+Copyright (c) 2025 Jay Wenden (CollatzEngine)
 Licensed under CC BY-NC-SA 4.0
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 """

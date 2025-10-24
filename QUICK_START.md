@@ -11,9 +11,14 @@ python run_diagnostics.py
 
 This checks:
 - ✓ Python libraries
-- ✓ GPU availability
+- ✓ GPU availability (detects all GPUs)
 - ✓ CUDA drivers
 - ✓ File permissions
+
+**Multi-GPU Systems:**
+- Automatically detected and utilized
+- Workload distributed across all GPUs
+- Heterogeneous configurations supported
 
 **CPU Mode (Fallback):**
 - Just Python 3.8+ required

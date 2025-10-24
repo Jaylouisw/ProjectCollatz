@@ -61,11 +61,13 @@ python launcher.py --diagnostics
 ### Main Scripts
 
 - **`CollatzEngine.py`** - Main verification engine
+  - Multi-GPU mode (automatically detects all GPUs)
   - GPU hybrid mode (CUDA + CPU workers)
   - CPU-only mode (pure multiprocessing)
   - Command-line: `python CollatzEngine.py [gpu|cpu]`
 
 - **`auto_tuner.py`** - GPU optimization (GPU mode only)
+  - Multi-GPU support (heterogeneous configurations)
   - Stage 1: Binary search
   - Stage 2: Fine-tuning
   - Stage 3: Progressive refinement
