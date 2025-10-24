@@ -61,7 +61,7 @@ except ImportError:
 # Configuration
 CONFIG_FILE = "collatz_config.json"
 COUNTEREXAMPLE_FILE = "counterexamples.txt"
-SAVE_INTERVAL = 500000000000  # Save every 500B (reduced I/O)
+SAVE_INTERVAL = 10000000000  # Save every 10B (frequent saves for auto-tuner accuracy)
 NUM_STREAMS = 4
 
 shutdown_flag = False
@@ -835,7 +835,7 @@ def run_gpu_mode():
     last_display = 0
     display_interval = 0.5  # Update display every 0.5 seconds (or less frequently)
     last_config_check = 0
-    config_check_interval = 30.0  # Check for config changes every 30 seconds
+    config_check_interval = 5.0  # Check for config changes every 5 seconds (for auto-tuner)
     session_max_steps = 0  # Track highest step count this session
     # max_steps_ever loaded from config
     

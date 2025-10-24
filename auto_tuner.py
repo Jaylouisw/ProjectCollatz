@@ -354,7 +354,7 @@ def test_config(batch, thread_mult, work_mult, blocks_sm, cpu_workers, iteration
     print(f"  Batch: {batch:,} | Threads: {thread_mult} | Work: {work_mult} | Blocks/SM: {blocks_sm} | CPU Workers: {cpu_workers}")
     
     save_tuning(test_config)
-    time.sleep(8)  # Reduced from 12s - wait for config reload
+    time.sleep(10)  # Wait for CollatzEngine to reload config (checks every 5s)
     
     print(f"  Measuring for {test_duration}s...", end='', flush=True)
     rate = get_test_rate(test_duration, quick_test)
