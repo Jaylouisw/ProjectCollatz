@@ -1232,7 +1232,11 @@ def worker_check_range(args):
 
 def init_worker():
     """Initialize worker to ignore SIGINT."""
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    try:
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
+    except (AttributeError, ValueError) as e:
+        # On some platforms (e.g., Android), signal handling may not work
+        pass
 
 def run_gpu_accelerated_cpu_mode(gpu_config, highest_proven, total_tested, previous_total_runtime):
     """CPU mode with GPU batch processing using VRAM."""
@@ -1518,46 +1522,63 @@ def run_cpu_mode():
 def main():
     """Main entry point - choose between GPU hybrid mode or CPU-only mode."""
     import sys
+    import traceback
     
-    # Check command-line arguments for mode selection
-    mode = None
-    if len(sys.argv) > 1:
-        arg = sys.argv[1].lower()
-        if arg in ['gpu', 'hybrid']:
-            mode = 'gpu'
-        elif arg in ['cpu', 'cpu-only']:
-            mode = 'cpu'
-        else:
-            print("Invalid mode. Use: python CollatzEngine.py [gpu|cpu]")
-            print("  gpu/hybrid  - Use GPU acceleration (default if GPU available)")
-            print("  cpu/cpu-only - Use CPU-only mode")
-            sys.exit(1)
-    
-    # Auto-detect mode if not specified
-    if mode is None:
-        if GPU_AVAILABLE:
-            gpu_config = get_gpu_config()
-            if gpu_config:
+    try:
+        # Check command-line arguments for mode selection
+        mode = None
+        if len(sys.argv) > 1:
+            arg = sys.argv[1].lower()
+            if arg in ['gpu', 'hybrid']:
                 mode = 'gpu'
-            else:
-                print("GPU detected but initialization failed. Falling back to CPU mode.\n")
+            elif arg in ['cpu', 'cpu-only']:
                 mode = 'cpu'
+            else:
+                print("Invalid mode. Use: python CollatzEngine.py [gpu|cpu]")
+                print("  gpu/hybrid  - Use GPU acceleration (default if GPU available)")
+                print("  cpu/cpu-only - Use CPU-only mode")
+                sys.exit(1)
+        
+        # Auto-detect mode if not specified
+        if mode is None:
+            if GPU_AVAILABLE:
+                gpu_config = get_gpu_config()
+                if gpu_config:
+                    mode = 'gpu'
+                else:
+                    print("GPU detected but initialization failed. Falling back to CPU mode.\n")
+                    mode = 'cpu'
+            else:
+                print("No GPU detected. Using CPU-only mode.\n")
+                mode = 'cpu'
+        
+        # Run selected mode
+        if mode == 'gpu':
+            if not GPU_AVAILABLE:
+                print("ERROR: GPU mode requested but no GPU available.")
+                print("Automatically switching to CPU mode...\n")
+                run_cpu_mode()
+            else:
+                gpu_config = get_gpu_config()
+                if not gpu_config:
+                    print("ERROR: GPU initialization failed.")
+                    print("Automatically switching to CPU mode...\n")
+                    run_cpu_mode()
+                else:
+                    run_gpu_mode()
         else:
-            print("No GPU detected. Using CPU-only mode.\n")
-            mode = 'cpu'
+            run_cpu_mode()
     
-    # Run selected mode
-    if mode == 'gpu':
-        if not GPU_AVAILABLE:
-            print("ERROR: GPU mode requested but no GPU available. Use CPU mode instead.\n")
-            sys.exit(1)
-        gpu_config = get_gpu_config()
-        if not gpu_config:
-            print("ERROR: GPU initialization failed. Use CPU mode instead.\n")
-            sys.exit(1)
-        run_gpu_mode()
-    else:
-        run_cpu_mode()
+    except Exception as e:
+        print(f"\n{'='*70}")
+        print("FATAL ERROR")
+        print(f"{'='*70}")
+        print(f"An unexpected error occurred: {e}")
+        print(f"\nFull traceback:")
+        traceback.print_exc()
+        print(f"{'='*70}")
+        print("\nPlease report this error with the above information.")
+        sys.exit(1)
 
 if __name__ == '__main__':
     from multiprocessing import freeze_support
