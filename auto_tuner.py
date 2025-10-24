@@ -240,17 +240,16 @@ def save_tuning(config):
 
 def get_test_rate(duration=120, quick_test=False):
     """Monitor for specified duration and return AVERAGE rate over multiple samples.
+    Uses realtime_stats.json for instant accurate readings.
     If quick_test=True, fail fast on crashes."""
-    if not os.path.exists(CONFIG_FILE):
-        print(" [ERROR: Config file not found]", end='')
-        return 0
+    REALTIME_STATS_FILE = "realtime_stats.json"
     
     # Adaptive sampling: shorter intervals for quick tests
     if quick_test or duration <= 60:
-        sample_interval = 15  # 15 seconds for quick tests
+        sample_interval = 10  # 10 seconds for quick tests
         max_failures = 2  # Fail fast
     else:
-        sample_interval = 20  # 20 seconds for normal tests (faster than 30s)
+        sample_interval = 15  # 15 seconds for normal tests
         max_failures = 3
     
     num_samples = max(2, duration // sample_interval)  # At least 2 samples
@@ -263,11 +262,12 @@ def get_test_rate(duration=120, quick_test=False):
     for i in range(num_samples):
         # Read initial state for this sample
         try:
-            with open(CONFIG_FILE, 'r') as f:
+            with open(REALTIME_STATS_FILE, 'r') as f:
                 initial = json.load(f)
-            initial_tested = initial.get('total_tested', 0)
+            initial_tested = initial.get('session_tested', 0)
+            initial_time = initial.get('timestamp', time.time())
         except:
-            print(f"\n  [ERROR: Cannot read config at sample {i+1}]", end='')
+            print(f"\n  [ERROR: Cannot read stats at sample {i+1}]", end='')
             continue
         
         # Wait for sample interval
@@ -275,17 +275,19 @@ def get_test_rate(duration=120, quick_test=False):
         
         # Read final state for this sample
         try:
-            with open(CONFIG_FILE, 'r') as f:
+            with open(REALTIME_STATS_FILE, 'r') as f:
                 final = json.load(f)
-            final_tested = final.get('total_tested', 0)
+            final_tested = final.get('session_tested', 0)
+            final_time = final.get('timestamp', time.time())
         except:
-            print(f"\n  [ERROR: Cannot read config at sample {i+1}]", end='')
+            print(f"\n  [ERROR: Cannot read stats at sample {i+1}]", end='')
             continue
         
         tested = final_tested - initial_tested
+        actual_time = final_time - initial_time
         
-        # If no progress, the checker probably crashed
-        if tested == 0:
+        # If no progress or no time elapsed, the checker probably crashed
+        if tested == 0 or actual_time <= 0:
             failed_samples += 1
             print(f"\n  [Sample {i+1}/{num_samples}: No progress - failure {failed_samples}/{max_failures}]", end='', flush=True)
             # Fail fast on quick tests or after max failures
@@ -296,7 +298,7 @@ def get_test_rate(duration=120, quick_test=False):
         
         # Reset failure counter on successful sample
         failed_samples = 0
-        sample_rate = tested / sample_interval
+        sample_rate = tested / actual_time
         samples.append(sample_rate)
         
         # Show progress with better formatting

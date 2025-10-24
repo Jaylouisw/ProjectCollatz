@@ -978,6 +978,21 @@ def run_gpu_mode():
                     
                     print("\n".join(output), flush=True)
                     
+                    # Write real-time stats for auto-tuner (lightweight JSON)
+                    try:
+                        with open("realtime_stats.json", "w") as f:
+                            import json
+                            stats = {
+                                "session_tested": session_tested,
+                                "session_elapsed": session_elapsed,
+                                "current_rate": current_rate,
+                                "average_rate": rate,
+                                "timestamp": current_time
+                            }
+                            json.dump(stats, f)
+                    except:
+                        pass  # Don't crash if file write fails
+                    
                     last_display = current_time
     
     except KeyboardInterrupt:

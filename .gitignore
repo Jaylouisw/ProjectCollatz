@@ -5,6 +5,7 @@ fine_tuning_state.json
 tuning_log.txt
 fine_tuning_log.txt
 session_summary.txt
+realtime_stats.json
 random_stats.json
 random_stats_backup.json
 reddit_post.md
@@ -12,7 +13,7 @@ error_log.json
 diagnostic_report.json
 # User profile (private)
 user_profile.json
-
+collatz_config.json
 # Contributions can be shared but don't commit by default
 # contributions.json
 
