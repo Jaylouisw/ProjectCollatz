@@ -93,8 +93,16 @@ def needs_optimization():
     current_fingerprint, current_hardware = get_hardware_fingerprint()
     state = load_optimization_state()
     
+    # Check if gpu_tuning.json exists (indicates previous tuning)
+    gpu_tuning_exists = os.path.exists('gpu_tuning.json')
+    
     # First run - no state file
     if state is None:
+        # But if gpu_tuning.json exists, create state from it
+        if gpu_tuning_exists:
+            print("[OPTIMIZATION STATE] Found existing gpu_tuning.json, creating state...")
+            save_optimization_state(optimized=True, benchmark_completed=False)
+            return False, "Using existing GPU tuning configuration", None
         return True, "First run - no optimization state found", None
     
     # Hardware changed
@@ -103,6 +111,11 @@ def needs_optimization():
     
     # Optimization was interrupted/not completed
     if not state.get('optimized', False):
+        # But check if gpu_tuning.json exists as fallback
+        if gpu_tuning_exists:
+            print("[OPTIMIZATION STATE] Marking as optimized based on existing tuning file...")
+            save_optimization_state(optimized=True, benchmark_completed=False)
+            return False, "Restored optimization state from existing tuning", state
         return True, "Previous optimization did not complete", state
     
     # Already optimized for this hardware
@@ -137,6 +150,23 @@ def get_optimization_status():
     """Get human-readable optimization status."""
     needs_opt, reason, state = needs_optimization()
     
+    # If needs_opt is False, system is already optimized
+    if not needs_opt:
+        if needs_benchmark():
+            return {
+                'needs_optimization': False,
+                'status': 'optimized_awaiting_benchmark',
+                'reason': 'Optimization complete, final benchmark pending',
+                'benchmark_ready': True
+            }
+        return {
+            'needs_optimization': False,
+            'status': 'fully_optimized',
+            'reason': reason,
+            'benchmark_ready': False
+        }
+    
+    # Needs optimization
     if state is None:
         return {
             'needs_optimization': True,
@@ -145,26 +175,10 @@ def get_optimization_status():
             'benchmark_ready': False
         }
     
-    if needs_opt:
-        return {
-            'needs_optimization': True,
-            'status': 'needs_reoptimization',
-            'reason': reason,
-            'benchmark_ready': False
-        }
-    
-    if needs_benchmark():
-        return {
-            'needs_optimization': False,
-            'status': 'optimized_awaiting_benchmark',
-            'reason': 'Optimization complete, final benchmark pending',
-            'benchmark_ready': True
-        }
-    
     return {
-        'needs_optimization': False,
-        'status': 'fully_optimized',
-        'reason': 'System fully optimized and benchmarked',
+        'needs_optimization': True,
+        'status': 'needs_reoptimization',
+        'reason': reason,
         'benchmark_ready': False
     }
 
