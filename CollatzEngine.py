@@ -276,7 +276,15 @@ def get_gpu_config():
                     }
             else:
                 with open('gpu_tuning.json', 'r') as f:
-                    tuning = json.load(f)
+                    tuning_data = json.load(f)
+                    # Handle new multi-GPU format or old format
+                    if isinstance(tuning_data, dict) and 'config' in tuning_data:
+                        tuning = tuning_data['config']
+                        num_gpus_tuned = tuning_data.get('num_gpus', 1)
+                        if num_gpus_tuned > 1:
+                            print(f"[INFO] Loaded multi-GPU tuning (optimized for {num_gpus_tuned} GPUs)")
+                    else:
+                        tuning = tuning_data  # Old format
         except FileNotFoundError:
             tuning = {
                 'work_multiplier': 800,

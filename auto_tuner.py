@@ -43,24 +43,81 @@ else:
         print("[ERROR] CuPy not available - cannot run auto-tuner")
         exit(1)
 
+def detect_all_gpus():
+    """Detect all available GPUs and return their properties."""
+    if not GPU_AVAILABLE:
+        return []
+    
+    try:
+        gpu_count = cp.cuda.runtime.getDeviceCount()
+        gpus = []
+        
+        for i in range(gpu_count):
+            with cp.cuda.Device(i):
+                props = cp.cuda.runtime.getDeviceProperties(i)
+                mem_info = cp.cuda.Device(i).mem_info
+                
+                gpu_info = {
+                    'id': i,
+                    'name': props['name'].decode() if isinstance(props['name'], bytes) else props['name'],
+                    'vram_gb': mem_info[1] / (1024**3),
+                    'sm_count': props['multiProcessorCount']
+                }
+                gpus.append(gpu_info)
+        
+        return gpus
+    except Exception as e:
+        print(f"[WARNING] GPU detection failed: {e}")
+        return []
+
 def detect_gpu_ranges():
     """Detect GPU capabilities and set appropriate tuning ranges.
+    For multi-GPU systems, uses the GPU with lowest VRAM as baseline.
     Future-proofed for 100 years following Moore's Law trends."""
     if not GPU_AVAILABLE:
         print("ERROR: GPU not available. Cannot run auto-tuner.")
         exit(1)
     
-    device = cp.cuda.Device()
-    props = cp.cuda.runtime.getDeviceProperties(device.id)
-    mem_info = device.mem_info
+    # Detect all GPUs
+    all_gpus = detect_all_gpus()
+    num_gpus = len(all_gpus)
     
-    vram_gb = mem_info[1] / (1024**3)
-    sm_count = props['multiProcessorCount']
+    if num_gpus == 0:
+        print("ERROR: No GPUs detected. Cannot run auto-tuner.")
+        exit(1)
+    
+    # Display all GPUs
+    print(f"Detected {num_gpus} GPU{'s' if num_gpus > 1 else ''}:")
+    for gpu in all_gpus:
+        print(f"  [{gpu['id']}] {gpu['name']} - {gpu['vram_gb']:.1f}GB, {gpu['sm_count']} SMs")
+    print()
+    
+    if num_gpus > 1:
+        print(f"[MULTI-GPU] Tuning for {num_gpus} GPUs")
+        print(f"[MULTI-GPU] Using lowest VRAM GPU ({min(g['vram_gb'] for g in all_gpus):.1f}GB) as baseline")
+        print("[MULTI-GPU] Configuration will work across all devices")
+        print()
+    
+    # Use primary GPU (device 0) for detection, or lowest VRAM for multi-GPU
+    if num_gpus > 1:
+        # Use GPU with lowest VRAM as baseline for conservative tuning
+        target_gpu = min(all_gpus, key=lambda g: g['vram_gb'])
+        vram_gb = target_gpu['vram_gb']
+        sm_count = target_gpu['sm_count']
+        with cp.cuda.Device(target_gpu['id']):
+            props = cp.cuda.runtime.getDeviceProperties(target_gpu['id'])
+            print(f"Baseline GPU: [{target_gpu['id']}] {props['name'].decode()}")
+    else:
+        device = cp.cuda.Device()
+        props = cp.cuda.runtime.getDeviceProperties(device.id)
+        mem_info = device.mem_info
+        vram_gb = mem_info[1] / (1024**3)
+        sm_count = props['multiProcessorCount']
+        print(f"GPU: {props['name'].decode()}")
     
     # Detect CPU count for worker tuning
     total_cpu_cores = cpu_count()
     
-    print(f"Detected GPU: {props['name'].decode()}")
     print(f"VRAM: {vram_gb:.1f} GB")
     print(f"Streaming Multiprocessors: {sm_count}")
     print(f"CPU Cores: {total_cpu_cores}")
@@ -232,11 +289,22 @@ def load_tuning():
     with open(TUNING_FILE, 'r') as f:
         return json.load(f)
 
-def save_tuning(config):
-    """Save GPU tuning config."""
+def save_tuning(config, gpu_count=1):
+    """Save GPU tuning config with multi-GPU metadata."""
+    tuning_data = {
+        'config': config,
+        'num_gpus': gpu_count,
+        'tuned_for_multi_gpu': gpu_count > 1,
+        'last_updated': datetime.now().isoformat()
+    }
+    
     with open(TUNING_FILE, 'w') as f:
-        json.dump(config, f, indent=4)
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Applied: {config}")
+        json.dump(tuning_data, f, indent=4)
+    
+    if gpu_count > 1:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Applied (Multi-GPU x{gpu_count}): {config}")
+    else:
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Applied: {config}")
 
 def get_test_rate(duration=120, quick_test=False):
     """Monitor for specified duration and return AVERAGE rate over multiple samples.
@@ -340,7 +408,7 @@ def log_result(config, rate):
     with open(LOG_FILE, 'a') as f:
         f.write(f"[{datetime.now().isoformat()}] Rate: {rate:,.0f}/s | Config: {config}\n")
 
-def test_config(batch, thread_mult, work_mult, blocks_sm, cpu_workers, iteration, total, test_duration=120, quick_test=False):
+def test_config(batch, thread_mult, work_mult, blocks_sm, cpu_workers, iteration, total, test_duration=120, quick_test=False, num_gpus=1):
     """Test a single configuration and return its rate.
     If quick_test=True, does a 60s quick validation first."""
     test_config = {
@@ -352,10 +420,11 @@ def test_config(batch, thread_mult, work_mult, blocks_sm, cpu_workers, iteration
     }
     
     test_label = "QUICK" if quick_test else "FULL"
-    print(f"\n[{iteration}/{total}] {test_label} Testing ({test_duration}s):")
+    gpu_label = f" [Multi-GPU x{num_gpus}]" if num_gpus > 1 else ""
+    print(f"\n[{iteration}/{total}] {test_label} Testing ({test_duration}s){gpu_label}:")
     print(f"  Batch: {batch:,} | Threads: {thread_mult} | Work: {work_mult} | Blocks/SM: {blocks_sm} | CPU Workers: {cpu_workers}")
     
-    save_tuning(test_config)
+    save_tuning(test_config, num_gpus)
     time.sleep(10)  # Wait for CollatzEngine to reload config (checks every 5s)
     
     print(f"  Measuring for {test_duration}s...", end='', flush=True)
@@ -370,7 +439,7 @@ def test_config(batch, thread_mult, work_mult, blocks_sm, cpu_workers, iteration
     
     return rate, test_config
 
-def binary_search_param(param_name, param_list, baseline_config, iteration_offset=0):
+def binary_search_param(param_name, param_list, baseline_config, iteration_offset=0, num_gpus=1):
     """Use binary search to find optimal value for a single parameter.
     Much faster than linear sweep."""
     print(f"\n[SEARCH] Binary searching {param_name.upper()}...")
@@ -399,7 +468,7 @@ def binary_search_param(param_name, param_list, baseline_config, iteration_offse
         # Quick test first (60s)
         rate, _ = test_config(
             config['batch'], config['thread'], config['work'], config['blocks'], config['cpu_workers'],
-            iteration_offset + tests_done, "binary", QUICK_TEST_DURATION, quick_test=True
+            iteration_offset + tests_done, "binary", QUICK_TEST_DURATION, quick_test=True, num_gpus=num_gpus
         )
         
         if rate > best_rate:
@@ -471,6 +540,10 @@ def adaptive_search(auto_resume=False):
     print("=" * 70)
     print()
     
+    # Detect all GPUs
+    all_gpus = detect_all_gpus()
+    num_gpus = len(all_gpus)
+    
     # Detect GPU and get appropriate tuning ranges
     gpu_ranges = detect_gpu_ranges()
     
@@ -529,19 +602,19 @@ def adaptive_search(auto_resume=False):
         print("Note: No VRAM limits applied - testing full parameter space\n")
         
         # Use binary search for each parameter - WAY faster!
-        best_rate, best_batch = binary_search_param('batch', BATCH_SIZES, baseline, iteration)
+        best_rate, best_batch = binary_search_param('batch', BATCH_SIZES, baseline, iteration, num_gpus)
         iteration += 5  # Approximate iterations used
         
-        best_rate, best_thread = binary_search_param('thread', THREAD_MULTIPLIERS, baseline, iteration)
+        best_rate, best_thread = binary_search_param('thread', THREAD_MULTIPLIERS, baseline, iteration, num_gpus)
         iteration += 5
         
-        best_rate, best_work = binary_search_param('work', WORK_MULTIPLIERS, baseline, iteration)
+        best_rate, best_work = binary_search_param('work', WORK_MULTIPLIERS, baseline, iteration, num_gpus)
         iteration += 5
         
-        best_rate, best_blocks = binary_search_param('blocks', BLOCKS_PER_SM, baseline, iteration)
+        best_rate, best_blocks = binary_search_param('blocks', BLOCKS_PER_SM, baseline, iteration, num_gpus)
         iteration += 5
         
-        best_rate, best_cpu_workers = binary_search_param('cpu_workers', CPU_WORKERS, baseline, iteration)
+        best_rate, best_cpu_workers = binary_search_param('cpu_workers', CPU_WORKERS, baseline, iteration, num_gpus)
         iteration += 5
         
         # Build best config
@@ -583,7 +656,7 @@ def adaptive_search(auto_resume=False):
         # Test combinations of top parameters
         for batch, work in itertools.product(set(batch_fine), set(work_fine)):
             iteration += 1
-            rate, config = test_config(batch, best_thread, work, best_blocks, best_cpu_workers, iteration, "inf", TEST_DURATION)
+            rate, config = test_config(batch, best_thread, work, best_blocks, best_cpu_workers, iteration, "inf", TEST_DURATION, num_gpus=num_gpus)
             if rate > best_rate:
                 best_rate = rate
                 best_config = config
@@ -691,7 +764,7 @@ def adaptive_search(auto_resume=False):
                 continue
             
             iteration += 1
-            rate, config = test_config(batch, thread, work, blocks, cpu_workers, iteration, "inf", test_duration)
+            rate, config = test_config(batch, thread, work, blocks, cpu_workers, iteration, "inf", test_duration, num_gpus=num_gpus)
             if rate > best_rate:
                 old_rate = best_rate
                 best_rate = rate
