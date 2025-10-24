@@ -1,7 +1,7 @@
 {
-  "highest_proven": 2361184348385986999999,
-  "total_tested": 581071734400000,
-  "total_runtime_seconds": 88679.01748681068,
+  "highest_proven": 2361184722645986999999,
+  "total_tested": 768201734400000,
+  "total_runtime_seconds": 107712.38134145737,
   "max_steps_ever": 0,
-  "last_updated": "2025-10-24T08:10:03.207956"
+  "last_updated": "2025-10-24T13:29:23.315152"
 }

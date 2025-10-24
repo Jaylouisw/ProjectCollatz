@@ -78,18 +78,20 @@ python benchmark.py
 - Checks if system needs optimization
 - Collects system specs (GPU model, VRAM, CPU cores, etc.)
 - Runs optimization (GPU mode auto-tuner if not yet optimized)
-- Saves results to timestamped JSON file with optimization status
+- Tracks peak performance rates accurately
+- Saves results to timestamped JSON file in `benchmarks/` folder
 
 **What to report:**
-- Just send the `benchmark_results_YYYYMMDD_HHMMSS.json` file via pull request!
+- Just send the `benchmarks/benchmark_results_YYYYMMDD_HHMMSS.json` file via pull request!
 - Fork the repository, add your file to `benchmarks/`, and create a PR
 - The file automatically includes whether your system was optimized
 - See CONTRIBUTING.md for detailed submission steps
 
 **For best results:**
 - Run `python launcher.py` first to fully optimize your system
-- Let the auto-tuner complete (GPU mode only)
+- Let the auto-tuner complete (GPU mode only, ~20-30 minutes)
 - Then run benchmark for peak performance results
+- The auto-tuner now uses real-time stats for highly accurate measurements
 
 ---
 
@@ -99,13 +101,19 @@ python benchmark.py
 python launcher.py
 ```
 
+**Choose your mode:**
+1. GPU mode (GPU + CPU workers)
+2. CPU-only mode
+3. Auto-detect (recommended)
+
 Split-screen display shows real-time performance and optimization.
 
 **Features:**
+- Detects existing tuning configurations automatically
 - Automatically runs auto-tuner only when needed (first run or hardware changes)
 - Auto-resumes from previous optimization if interrupted
 - Shows both engine and tuner output simultaneously
-- Intelligent optimization state management
+- Intelligent optimization state management with hardware fingerprinting
 
 **Diagnostics:**
 ```bash
@@ -166,6 +174,7 @@ python auto_tuner.py
 **Auto-tuner crashes/hangs**
 - Built-in failure detection will skip bad configs
 - Auto-resumes from saved state if interrupted
+- Now uses real-time stats for accurate measurements (no more false readings)
 - Let me know which configurations caused issues (useful data!)
 
 **"ModuleNotFoundError: No module named 'cupy'"**
@@ -242,11 +251,14 @@ Even if you just run it for a few minutes, the data would be incredibly valuable
 
 Thanks for considering helping out! This has been a fun project and I'm excited to see how it performs on different hardware configurations.
 
-**Edit:** The engine now includes:
-- Automatic optimization state management (only runs tuner when needed)
-- Auto-resume capability if optimization is interrupted  
-- Comprehensive error handling and diagnostics
-- Hardware fingerprinting to detect changes
-- Full troubleshooting support with error logs
+**Edit:** Recent improvements:
+- **Real-time stats system**: Auto-tuner now uses live performance data (0.5s updates) for highly accurate measurements
+- **Smarter optimization detection**: Checks for existing tuning configs to avoid unnecessary re-optimization
+- **Mode selection in launcher**: Choose GPU, CPU-only, or auto-detect
+- **Faster config reloading**: CollatzEngine checks for tuning changes every 5 seconds (was 30s)
+- **Accurate rate tracking**: Benchmarks now track peak rates correctly
+- **Auto-resume capability**: Optimization picks up where it left off if interrupted
+- **Comprehensive error handling**: Built-in diagnostics and troubleshooting
+- **Hardware fingerprinting**: Detects when system changes require re-optimization
 
 Multiple GPUs or different configurations welcome! The system automatically tracks hardware changes and re-optimizes when needed.

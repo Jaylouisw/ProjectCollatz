@@ -63,15 +63,21 @@ Run the engine with intelligent optimization management:
 python launcher.py
 ```
 
+The launcher will prompt you to choose:
+1. **GPU mode** - GPU + CPU workers (best performance)
+2. **CPU-only mode** - Pure multiprocessing
+3. **Auto-detect** - Automatically selects based on hardware
+
 **Features:**
+- Detects existing tuning configurations (no unnecessary re-optimization)
 - Automatically runs auto-tuner only when needed
 - Auto-resumes from saved state if interrupted
 - Split-screen display (engine + tuner)
-- Smart hardware detection and optimization
+- Smart hardware fingerprinting
 
-**First Run:** System will optimize automatically (GPU mode only, takes ~20-30 minutes)
+**First Run:** System will optimize automatically if GPU mode selected (~20-30 minutes)
 
-**Subsequent Runs:** Skips optimization if hardware unchanged
+**Subsequent Runs:** Uses existing tuning, skips optimization unless hardware changed
 
 **System Diagnostics:**
 ```bash
@@ -127,31 +133,34 @@ This will:
 - Automatically falls back to CPU mode if GPU unavailable
 
 ### Auto-Tuner (`auto_tuner.py`) - GPU Mode Only
+- **Real-time performance measurement**: Reads live stats every 0.5 seconds for accurate rate calculation
 - **Stage 1**: Binary search for optimal parameters (60s quick tests)
 - **Stage 2**: Fine-tuning around best configurations (2-min tests)
 - **Stage 3**: Progressive refinement until convergence
 - **Auto-resume**: Automatically picks up where it left off if interrupted
 - **Smart invocation**: Only runs when needed (first run, hardware changes, or incomplete optimization)
+- **Precise measurements**: Uses session-based counters and actual timestamps for accuracy
 
 Optimizes:
-- Batch size
+- Batch size (future-proofed for 100+ years of GPU evolution)
 - Threads per block
 - Work multiplier
 - Blocks per streaming multiprocessor
-- CPU worker count (for difficult numbers)
+- CPU worker count (1-1024+ cores supported)
 
 ### Optimization State Management (`optimization_state.py`)
 - **Hardware fingerprinting**: SHA256 hash of GPU+CPU specs
-- **Intelligent detection**: Knows when optimization is needed
+- **Intelligent detection**: Checks for existing gpu_tuning.json to avoid re-optimization
 - **State persistence**: Tracks completion across sessions
 - **Hardware change detection**: Re-optimizes when hardware changes
 - **Benchmark tracking**: Records when final benchmarks are completed
 
 ### Launcher (`launcher.py`)
+- **Mode selection**: Choose GPU, CPU-only, or auto-detect
 - Manages both engine and auto-tuner processes automatically
 - Provides unified split-screen display
 - Handles graceful shutdown
-- **Smart optimization**: Only runs tuner when needed
+- **Smart optimization**: Only runs tuner when needed, uses existing configs when available
 - **Pre-flight checks**: Validates libraries and permissions
 - **Diagnostics mode**: `--diagnostics` flag for system health check
 
@@ -214,6 +223,7 @@ Combine contributions from multiple users to build a global leaderboard.
 
 - `collatz_config.json` - Main checker configuration and progress state
 - `gpu_tuning.json` - Current GPU optimization settings (auto-tuner output)
+- `realtime_stats.json` - Live performance stats (updates every 0.5s for auto-tuner accuracy)
 - `autotuner_state.json` - Auto-tuner resume state (for interrupted sessions)
 - `optimization_state.json` - Hardware fingerprint and optimization completion status
 - `error_log.json` - Error history with diagnostics (automatic logging)
