@@ -184,6 +184,9 @@ def save_config(highest_proven, total_tested, total_runtime_seconds=None, max_st
             total_runtime_seconds = max(total_runtime_seconds, existing_runtime)
         
         # Track max steps ever seen across all sessions
+        # NOTE: This only tracks step counts from CPU workers (difficult numbers).
+        # GPU kernel does not return step counts for performance reasons.
+        # max_steps_ever = 0 means no CPU workers have returned results yet.
         if max_steps_ever is not None:
             existing_max_steps = max(existing_max_steps, max_steps_ever)
         
@@ -836,8 +839,8 @@ def run_gpu_mode():
     display_interval = 0.5  # Update display every 0.5 seconds (or less frequently)
     last_config_check = 0
     config_check_interval = 5.0  # Check for config changes every 5 seconds (for auto-tuner)
-    session_max_steps = 0  # Track highest step count this session
-    # max_steps_ever loaded from config
+    session_max_steps = 0  # Track highest step count this session (CPU workers only)
+    # max_steps_ever loaded from config - only tracks CPU worker results (difficult numbers)
     
     batch_counter = 0
     cpu_check_interval = 100  # Check CPU results every 100 batches instead of every batch
@@ -897,7 +900,8 @@ def run_gpu_mode():
                         result_type, num, info = cpu_result_queue.get_nowait()
                         cpu_pending -= 1
                         
-                        # Track max steps (info contains step count)
+                        # Track max steps (info contains step count from CPU workers)
+                        # NOTE: GPU results don't include step counts for performance reasons
                         if result_type in ('proven', 'disproven', 'inconclusive') and isinstance(info, int):
                             session_max_steps = max(session_max_steps, info)
                             max_steps_ever = max(max_steps_ever, info)
