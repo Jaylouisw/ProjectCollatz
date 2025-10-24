@@ -75,12 +75,21 @@ python benchmark.py
 
 **What it does:**
 - Auto-detects GPU or CPU mode
+- Checks if system needs optimization
 - Collects system specs (GPU model, VRAM, CPU cores, etc.)
-- Runs optimization (GPU mode includes auto-tuner)
-- Saves results to timestamped JSON file
+- Runs optimization (GPU mode auto-tuner if not yet optimized)
+- Saves results to timestamped JSON file with optimization status
 
 **What to report:**
-- Just send the `benchmark_results_YYYYMMDD_HHMMSS.json` file!
+- Just send the `benchmark_results_YYYYMMDD_HHMMSS.json` file via pull request!
+- Fork the repository, add your file to `benchmarks/`, and create a PR
+- The file automatically includes whether your system was optimized
+- See CONTRIBUTING.md for detailed submission steps
+
+**For best results:**
+- Run `python launcher.py` first to fully optimize your system
+- Let the auto-tuner complete (GPU mode only)
+- Then run benchmark for peak performance results
 
 ---
 
@@ -91,6 +100,19 @@ python launcher.py
 ```
 
 Split-screen display shows real-time performance and optimization.
+
+**Features:**
+- Automatically runs auto-tuner only when needed (first run or hardware changes)
+- Auto-resumes from previous optimization if interrupted
+- Shows both engine and tuner output simultaneously
+- Intelligent optimization state management
+
+**Diagnostics:**
+```bash
+python launcher.py --diagnostics
+```
+
+Runs complete system check for hardware, libraries, and configuration issues.
 
 ---
 
@@ -131,19 +153,33 @@ python auto_tuner.py
 ## Troubleshooting
 
 **"GPU not available"**
-- Make sure CUDA drivers are installed
-- Verify CuPy is installed correctly: `python -c "import cupy; print(cupy.cuda.runtime.getDeviceProperties(0))"`
+- Install CuPy: `pip install cupy-cuda12x` (or cuda11x for older CUDA)
+- Update GPU drivers
+- Verify with: `python -c "import cupy; print(cupy.cuda.runtime.getDeviceProperties(0))"`
+- Or use CPU mode: `python CollatzEngine.py cpu`
+
+**System Issues / Errors**
+- Run diagnostics: `python run_diagnostics.py`
+- Check error log: `error_log.json`
+- See troubleshooting guide: `ERROR_HANDLING.md`
 
 **Auto-tuner crashes/hangs**
-- This is actually useful data! Some configurations may not work on certain GPUs
-- The auto-tuner has built-in failure detection and will skip bad configs
-- Let me know which configurations caused issues
+- Built-in failure detection will skip bad configs
+- Auto-resumes from saved state if interrupted
+- Let me know which configurations caused issues (useful data!)
 
 **"ModuleNotFoundError: No module named 'cupy'"**
 - Install CuPy: `pip install cupy-cuda12x` (or cuda11x for older CUDA versions)
+- Or use CPU-only mode (no CuPy needed)
 
-**Unicode/encoding errors (Windows only)**
-- These should be fixed, but if you see any, let me know!
+**Config file errors**
+- Engine automatically recovers with safe defaults
+- Check `error_log.json` for details
+- Delete corrupted files - they'll be recreated
+
+**Permission errors**
+- Run as administrator (Windows) or with sudo (Linux)
+- Check folder write permissions
 
 ---
 
@@ -152,8 +188,10 @@ python auto_tuner.py
 - The code only performs mathematical computations (Collatz Conjecture checking)
 - No data is collected, uploaded, or shared
 - All state is saved locally in JSON files
+- Error logs (if any) are stored locally in `error_log.json`
 - Feel free to review the code before running - it's all open source
 - Runs can be stopped at any time with Ctrl+C
+- Auto-tuner automatically resumes if interrupted
 
 ---
 
@@ -162,25 +200,53 @@ python auto_tuner.py
 The Collatz Conjecture is one of mathematics' most famous unsolved problems. While we're not expecting to find a counterexample (the conjecture has been verified to huge numbers already), this project is about:
 
 1. **Pushing GPU optimization techniques** to their limits
-2. **Exploring adaptive auto-tuning** for CUDA workloads
-3. **Building efficient mathematical computing infrastructure**
-4. **Having fun with big numbers!**
+2. **Exploring adaptive auto-tuning** for CUDA workloads with intelligent state management
+3. **Building robust error handling** for diverse hardware configurations
+4. **Building efficient mathematical computing infrastructure**
+5. **Having fun with big numbers!**
 
 ---
 
 ## Contributing Results
 
-If you're able to run this, please comment with:
+If you're able to run this, please submit a pull request with your benchmark file:
 
-1. **GPU Model** (e.g., "RTX 4090 24GB")
-2. **Peak odd/s rate** (from hybrid checker)
-3. **Optimal config** (from auto-tuner, if it found one)
-4. **Any interesting observations**
+1. **Run the benchmark:** `python benchmark.py`
+2. **Fork this repository** on GitHub
+3. **Rename the file** to include your hardware:
+   - GPU: `benchmark_RTX4090_20251023.json`
+   - CPU: `benchmark_EPYC7763_128core_20251023.json`
+4. **Add to `benchmarks/` directory**
+5. **Create a pull request** with ONLY the benchmark file
+
+**Include in PR description:**
+1. **Hardware** (e.g., "RTX 4090 24GB" or "Dual EPYC 7763 128 cores")
+2. **Mode** (GPU hybrid or CPU-only)
+3. **System optimized?** (shown in benchmark results)
+4. **Any interesting observations or errors encountered**
 
 Even if you just run it for a few minutes, the data would be incredibly valuable!
+
+**Or comment here with:**
+- Hardware specs
+- Peak odd/s rate
+- Optimal config (from auto-tuner, if GPU mode)
+
+**Benchmark file submissions (preferred):**
+- The `benchmark_results_*.json` file contains everything needed
+- See CONTRIBUTING.md for detailed submission guidelines
+- One file per pull request, no other changes
+- Diagnostics output also welcome if you encounter issues
 
 ---
 
 Thanks for considering helping out! This has been a fun project and I'm excited to see how it performs on different hardware configurations.
 
-**Edit:** If you have multiple GPUs or want to test different configurations, that's awesome too! The auto-tuner saves its state so you can stop/resume anytime.
+**Edit:** The engine now includes:
+- Automatic optimization state management (only runs tuner when needed)
+- Auto-resume capability if optimization is interrupted  
+- Comprehensive error handling and diagnostics
+- Hardware fingerprinting to detect changes
+- Full troubleshooting support with error logs
+
+Multiple GPUs or different configurations welcome! The system automatically tracks hardware changes and re-optimizes when needed.

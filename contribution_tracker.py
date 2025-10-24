@@ -1,6 +1,10 @@
 """
 Collatz Engine - Contribution Tracker
 Tracks and verifies contributions from different users/machines
+
+Copyright (c) 2025 Jay (CollatzEngine)
+Licensed under CC BY-NC-SA 4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
 """
 
 import json

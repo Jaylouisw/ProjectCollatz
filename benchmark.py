@@ -2,6 +2,10 @@
 Collatz Engine Benchmark Script
 Automatically collects system specs, runs optimization, and saves results
 Supports both GPU hybrid mode and CPU-only mode
+
+Copyright (c) 2025 Jay (CollatzEngine)
+Licensed under CC BY-NC-SA 4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
 """
 
 import subprocess
@@ -11,6 +15,15 @@ import platform
 import sys
 from datetime import datetime
 import os
+import optimization_state
+
+# Import error handler
+try:
+    from error_handler import logger, check_gpu_availability
+    ERROR_HANDLING = True
+except ImportError:
+    ERROR_HANDLING = False
+    logger = None
 
 try:
     import cupy as cp
@@ -145,6 +158,18 @@ def run_benchmark(duration_minutes=10):
     print("Collecting system specifications...")
     print()
     
+    # Check optimization status
+    opt_status = optimization_state.get_optimization_status()
+    is_optimized = optimization_state.is_system_optimized()
+    
+    if is_optimized:
+        print("✓ System is optimized for current hardware")
+    else:
+        print(f"⚠ Warning: System not optimized - {opt_status['reason']}")
+        print("  Benchmark results may not reflect peak performance.")
+        print("  Run launcher.py to optimize before benchmarking.")
+    print()
+    
     # Determine mode
     mode = 'cpu'
     if GPU_AVAILABLE:
@@ -233,6 +258,7 @@ def run_benchmark(duration_minutes=10):
         "system_specs": specs,
         "benchmark_duration_minutes": duration_minutes,
         "checker_metrics": {},
+        "peak_rate_odd_per_sec": 0,  # Track peak rate
         "tuner_configs": [] if mode == 'gpu' else None,
         "tuner_peaks": [] if mode == 'gpu' else None,
         "raw_output": {
@@ -280,6 +306,10 @@ def run_benchmark(duration_minutes=10):
                         parsed = parse_checker_output(line)
                         if parsed:
                             results["checker_metrics"].update(parsed)
+                            # Track peak rate
+                            if "current_rate_odd_per_sec" in parsed:
+                                if parsed["current_rate_odd_per_sec"] > results["peak_rate_odd_per_sec"]:
+                                    results["peak_rate_odd_per_sec"] = parsed["current_rate_odd_per_sec"]
             except:
                 pass
             
@@ -366,12 +396,23 @@ def run_benchmark(duration_minutes=10):
         print()
     
     # Calculate summary
+    is_optimized = optimization_state.is_system_optimized()
     results["summary"] = {
         "benchmark_completed": True,
         "actual_duration_seconds": time.time() - start_time,
+        "system_optimized": is_optimized,
+        "mode": mode
     }
     
-    if "current_rate_odd_per_sec" in results["checker_metrics"]:
+    if not is_optimized:
+        results["summary"]["optimization_note"] = "System was not optimized when benchmark ran - results may not reflect peak performance"
+    
+    # Use the tracked peak rate instead of last seen rate
+    if results["peak_rate_odd_per_sec"] > 0:
+        results["summary"]["peak_checker_rate_odd_per_sec"] = results["peak_rate_odd_per_sec"]
+        results["summary"]["peak_checker_rate_effective_per_sec"] = results["peak_rate_odd_per_sec"] * 2
+    elif "current_rate_odd_per_sec" in results["checker_metrics"]:
+        # Fallback to last rate if peak wasn't tracked
         results["summary"]["peak_checker_rate_odd_per_sec"] = results["checker_metrics"]["current_rate_odd_per_sec"]
         results["summary"]["peak_checker_rate_effective_per_sec"] = results["checker_metrics"]["current_rate_odd_per_sec"] * 2
     
@@ -386,9 +427,12 @@ def run_benchmark(duration_minutes=10):
     return results
 
 def save_results(results):
-    """Save results to a JSON file."""
+    """Save results to a JSON file in the benchmarks folder."""
+    # Create benchmarks directory if it doesn't exist
+    os.makedirs('benchmarks', exist_ok=True)
+    
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"benchmark_results_{timestamp}.json"
+    filename = f"benchmarks/benchmark_results_{timestamp}.json"
     
     with open(filename, 'w') as f:
         json.dump(results, f, indent=2)
@@ -468,6 +512,11 @@ def main():
     
     # Run benchmark
     results = run_benchmark(duration_minutes=duration)
+    
+    # Mark benchmark as complete if system was optimized
+    if optimization_state.is_system_optimized():
+        optimization_state.mark_benchmark_complete()
+        print("✓ Benchmark completed on optimized system")
     
     # Save results
     filename = save_results(results)

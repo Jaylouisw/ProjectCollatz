@@ -2,16 +2,20 @@
 
 A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, featuring adaptive auto-tuning, hybrid CPU+GPU architecture, and CPU-only fallback mode.
 
+📚 **New to this project?** Start with [QUICK_START.md](QUICK_START.md) | **All documentation:** [DOCUMENTATION.md](DOCUMENTATION.md)
+
 ## Features
 
 - **Hybrid CPU+GPU architecture** - Maximizes throughput using CuPy for CUDA acceleration
 - **CPU-only mode** - Runs on systems without GPU (automatic fallback)
 - **Adaptive auto-tuner** - Dynamically optimizes GPU and CPU parameters for peak performance
+- **Comprehensive error handling** - Catches hardware issues, missing libraries, driver problems
 - **Efficient odd-only checking** - Skips even numbers (trivial cases)
 - **Persistent state** - Resume capability with checkpoint system
 - **Real-time monitoring** - Split-screen display for checker and tuner
 - **Multi-stage optimization** - Binary search + fine-tuning + progressive refinement
 - **Contribution tracking** - Track and share verification progress across a distributed network
+- **System diagnostics** - Built-in health checks and troubleshooting
 
 ## Performance
 
@@ -42,15 +46,39 @@ git clone <your-repo-url>
 cd CollatzEngine
 ```
 
+**First-time users:** See [QUICK_START.md](QUICK_START.md) for step-by-step instructions.
+
+**System check:**
+```bash
+python run_diagnostics.py  # Verify your system is ready
+```
+
 ## Usage
 
 ### Option 1: Automated Launcher (Recommended)
 
-Run both the checker and auto-tuner together with split-screen display:
+Run the engine with intelligent optimization management:
 
 ```bash
 python launcher.py
 ```
+
+**Features:**
+- Automatically runs auto-tuner only when needed
+- Auto-resumes from saved state if interrupted
+- Split-screen display (engine + tuner)
+- Smart hardware detection and optimization
+
+**First Run:** System will optimize automatically (GPU mode only, takes ~20-30 minutes)
+
+**Subsequent Runs:** Skips optimization if hardware unchanged
+
+**System Diagnostics:**
+```bash
+python launcher.py --diagnostics
+```
+
+Checks for hardware issues, missing libraries, driver problems, etc.
 
 ### Option 2: Direct Execution
 
@@ -67,9 +95,17 @@ python CollatzEngine.py gpu
 python CollatzEngine.py cpu
 ```
 
+**Note:** Direct execution skips auto-tuner. For best performance, use launcher first.
+
 ### Option 3: Benchmark Mode
 
 For automated performance testing and results collection:
+
+```bash
+python benchmark.py
+```
+
+**Recommendation:** Run `launcher.py` first to optimize, then run benchmark for accurate results.
 
 ```bash
 python benchmark.py
@@ -94,6 +130,8 @@ This will:
 - **Stage 1**: Binary search for optimal parameters (60s quick tests)
 - **Stage 2**: Fine-tuning around best configurations (2-min tests)
 - **Stage 3**: Progressive refinement until convergence
+- **Auto-resume**: Automatically picks up where it left off if interrupted
+- **Smart invocation**: Only runs when needed (first run, hardware changes, or incomplete optimization)
 
 Optimizes:
 - Batch size
@@ -102,10 +140,27 @@ Optimizes:
 - Blocks per streaming multiprocessor
 - CPU worker count (for difficult numbers)
 
+### Optimization State Management (`optimization_state.py`)
+- **Hardware fingerprinting**: SHA256 hash of GPU+CPU specs
+- **Intelligent detection**: Knows when optimization is needed
+- **State persistence**: Tracks completion across sessions
+- **Hardware change detection**: Re-optimizes when hardware changes
+- **Benchmark tracking**: Records when final benchmarks are completed
+
 ### Launcher (`launcher.py`)
-- Manages both processes automatically
+- Manages both engine and auto-tuner processes automatically
 - Provides unified split-screen display
 - Handles graceful shutdown
+- **Smart optimization**: Only runs tuner when needed
+- **Pre-flight checks**: Validates libraries and permissions
+- **Diagnostics mode**: `--diagnostics` flag for system health check
+
+### Error Handler (`error_handler.py`)
+- **Comprehensive logging**: All errors saved to `error_log.json`
+- **System diagnostics**: Hardware, library, and config validation
+- **Automatic recovery**: Falls back to safe defaults on errors
+- **Detailed reports**: Full stack traces with system context
+- **Hardware checks**: GPU availability, CUDA runtime, library validation
 
 ### Contribution Tracker (`contribution_tracker.py`)
 - Records verification contributions from each user
@@ -157,9 +212,63 @@ Combine contributions from multiple users to build a global leaderboard.
 
 ## Configuration Files
 
-- `collatz_config.json` - Main checker configuration
-- `gpu_tuning.json` - Current GPU optimization settings
-- `autotuner_state.json` - Auto-tuner resume state
+- `collatz_config.json` - Main checker configuration and progress state
+- `gpu_tuning.json` - Current GPU optimization settings (auto-tuner output)
+- `autotuner_state.json` - Auto-tuner resume state (for interrupted sessions)
+- `optimization_state.json` - Hardware fingerprint and optimization completion status
+- `error_log.json` - Error history with diagnostics (automatic logging)
+- `diagnostic_report.json` - System health check results
+- `user_profile.json` - Contribution tracker profile (optional)
+
+**Note:** All state files are in `.gitignore` - they're user-specific and won't be committed.
+
+## Troubleshooting
+
+### Run System Diagnostics
+
+Check for hardware issues, missing libraries, or driver problems:
+
+```bash
+python run_diagnostics.py
+```
+
+Or through the launcher:
+
+```bash
+python launcher.py --diagnostics
+```
+
+This will check:
+- Required Python libraries
+- GPU availability and status
+- File permissions
+- Configuration file validity
+- System specifications
+
+### Error Logging
+
+All errors are automatically logged to `error_log.json` with:
+- Error type and message
+- Full stack traces
+- System information
+- Timestamps
+
+For detailed troubleshooting guide, see [ERROR_HANDLING.md](ERROR_HANDLING.md)
+
+### Common Issues
+
+**GPU Not Detected:**
+- Install CuPy: `pip install cupy-cuda12x`
+- Update GPU drivers
+- Or use CPU mode: `python CollatzEngine.py cpu`
+
+**Config File Errors:**
+- Engine automatically recovers with defaults
+- Check `error_log.json` for details
+
+**Permission Errors:**
+- Run as administrator (Windows)
+- Check folder write permissions
 
 ## Contributing
 

@@ -3,6 +3,10 @@ Auto-tuner for Collatz GPU Performance
 Uses adaptive search to find optimal GPU settings quickly
 Automatically detects and tunes for any GPU hardware
 Also optimizes CPU worker count for difficult number processing
+
+Copyright (c) 2025 Jay (CollatzEngine)
+Licensed under CC BY-NC-SA 4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
 """
 
 import json
@@ -11,13 +15,33 @@ import os
 from datetime import datetime
 import itertools
 from multiprocessing import cpu_count
+import optimization_state
 
+# Import error handler
 try:
-    import cupy as cp
-    GPU_AVAILABLE = True
+    from error_handler import logger, safe_import_cupy
+    ERROR_HANDLING = True
 except ImportError:
-    GPU_AVAILABLE = False
-    cp = None
+    ERROR_HANDLING = False
+    logger = None
+    print("Warning: Error handler not available")
+
+# Try to import GPU support with error handling
+if ERROR_HANDLING:
+    cp, GPU_AVAILABLE, gpu_msg = safe_import_cupy()
+    if not GPU_AVAILABLE:
+        print(f"[ERROR] {gpu_msg}")
+        print("[ERROR] Auto-tuner requires GPU to run")
+        exit(1)
+else:
+    try:
+        import cupy as cp
+        GPU_AVAILABLE = True
+    except ImportError:
+        GPU_AVAILABLE = False
+        cp = None
+        print("[ERROR] CuPy not available - cannot run auto-tuner")
+        exit(1)
 
 def detect_gpu_ranges():
     """Detect GPU capabilities and set appropriate tuning ranges.
@@ -404,8 +428,13 @@ def binary_search_param(param_name, param_list, baseline_config, iteration_offse
     
     return rate, test_config
 
-def adaptive_search():
-    """Multi-stage adaptive search to find optimal settings quickly."""
+def adaptive_search(auto_resume=False):
+    """Multi-stage adaptive search to find optimal settings quickly.
+    
+    Args:
+        auto_resume: If True, automatically resume from saved state without prompting.
+                     Used when launcher.py determines optimization is needed.
+    """
     
     # Check for resume state
     saved_state = load_state()
@@ -418,13 +447,17 @@ def adaptive_search():
         print(f"Stage: {saved_state['stage']}")
         print(f"Best rate: {saved_state['best_rate']:,.0f} odd/s")
         print("=" * 70)
-        response = input("\nResume from saved state? (y/n): ").lower()
-        if response != 'y':
-            print("Starting fresh...")
-            clear_state()
-            saved_state = None
+        
+        if auto_resume:
+            print("\nAuto-resuming from saved state...")
         else:
-            print("Resuming...")
+            response = input("\nResume from saved state? (y/n): ").lower()
+            if response != 'y':
+                print("Starting fresh...")
+                clear_state()
+                saved_state = None
+            else:
+                print("Resuming...")
     
     print("=" * 70)
     print("COLLATZ ADAPTIVE AUTO-TUNER - FAST MODE")
@@ -709,21 +742,39 @@ def adaptive_search():
         print(f"  {key}: {value:,}" if isinstance(value, int) else f"  {key}: {value}")
     print("=" * 70)
     
+    # Mark optimization as complete
+    optimization_state.mark_optimization_complete()
+    print("\n[OPTIMIZATION STATE] System marked as optimized")
+    print("[RECOMMENDATION] Run final benchmark: python benchmark.py")
+    
     return best_config
 
-def main():
+def main(auto_resume=False):
+    """Main auto-tuner entry point.
+    
+    Args:
+        auto_resume: If True, automatically resume from saved state without prompting.
+    
+    Returns:
+        0 on success, 1 on interrupt/error.
+    """
     try:
-        best_config = adaptive_search()
+        best_config = adaptive_search(auto_resume=auto_resume)
+        return 0  # Success
     except KeyboardInterrupt:
         print("\n\n" + "=" * 70)
         print("AUTO-TUNER STOPPED BY USER")
         print("=" * 70)
-        print("Best configuration has been applied and is running.")
-        print("Check tuning_log.txt for all results.")
+        print("Optimization was interrupted and not completed.")
+        print("Run launcher.py again to resume optimization.")
         print("=" * 70)
+        return 1  # Interrupted
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print("\n\nAuto-tuner stopped by user.")
+    import sys
+    
+    # Check for --auto-resume flag
+    auto_resume = '--auto-resume' in sys.argv
+    
+    exit_code = main(auto_resume=auto_resume)
+    sys.exit(exit_code)

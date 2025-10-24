@@ -1,5 +1,6 @@
 # State and log files
 autotuner_state.json
+optimization_state.json
 fine_tuning_state.json
 tuning_log.txt
 fine_tuning_log.txt
@@ -7,6 +8,8 @@ session_summary.txt
 random_stats.json
 random_stats_backup.json
 reddit_post.md
+error_log.json
+diagnostic_report.json
 # User profile (private)
 user_profile.json
 

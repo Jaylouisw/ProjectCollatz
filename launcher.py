@@ -1,7 +1,12 @@
 """
 Collatz Engine Launcher
-Starts the hybrid checker, then launches the auto-tuner after 1 minute
-Displays split-screen output with hybrid at top and tuner at bottom
+Starts the CollatzEngine, then automatically launches auto-tuner if needed
+Displays split-screen output with engine at top and tuner at bottom
+Automatically detects if optimization is needed based on hardware
+
+Copyright (c) 2025 Jay (CollatzEngine)
+Licensed under CC BY-NC-SA 4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
 """
 
 import subprocess
@@ -11,6 +16,15 @@ import os
 import threading
 import queue
 import ctypes
+import optimization_state
+
+# Import error handler
+try:
+    from error_handler import logger, run_system_diagnostics
+    ERROR_HANDLING = True
+except ImportError:
+    ERROR_HANDLING = False
+    logger = None
 
 # Windows console API for flicker-free updates
 if os.name == 'nt':
@@ -102,16 +116,59 @@ def display_split_screen(hybrid_buffer, tuner_buffer, hybrid_lock, tuner_lock, h
     print("Press Ctrl+C to stop both processes")
 
 def main():
+    # Check for --diagnostics flag
+    if '--diagnostics' in sys.argv:
+        if ERROR_HANDLING:
+            run_system_diagnostics()
+            return
+        else:
+            print("Error: Diagnostics not available - error_handler.py not found")
+            return
+    
     print("=" * 70)
     print("COLLATZ ENGINE LAUNCHER")
     print("=" * 70)
     print()
     
+    # Quick system check if error handling available
+    if ERROR_HANDLING:
+        try:
+            from error_handler import check_required_libraries, check_gpu_availability
+            libs_ok, missing = check_required_libraries()
+            if not libs_ok:
+                logger.log_error('startup', 'Missing required libraries', {'missing': missing})
+                print(f"[ERROR] Missing required libraries: {', '.join(missing)}")
+                print("[ERROR] Please install missing dependencies")
+                print("\nRun with --diagnostics flag for detailed system check:")
+                print("  python launcher.py --diagnostics")
+                return
+        except Exception as e:
+            print(f"[WARNING] Pre-flight check failed: {e}")
+    
+    # Check optimization status
+    opt_status = optimization_state.get_optimization_status()
+    
+    print("System Status Check:")
+    print(f"  Status: {opt_status['status']}")
+    print(f"  Reason: {opt_status['reason']}")
+    print()
+    
     # Get the directory where this script is located
     script_dir = os.path.dirname(os.path.abspath(__file__))
     
-    # Start the hybrid checker in the background
-    print("Starting Collatz Hybrid Checker...")
+    # Determine if we should run auto-tuner
+    should_run_tuner = opt_status['needs_optimization']
+    
+    if should_run_tuner:
+        print("[AUTO-TUNER] Will automatically start - optimization needed")
+    else:
+        print("[AUTO-TUNER] Skipping - system already optimized")
+        if opt_status['benchmark_ready']:
+            print("[BENCHMARK] Final benchmark recommended - run: python benchmark.py")
+    print()
+    
+    # Start the CollatzEngine in the background
+    print("Starting Collatz Engine...")
     hybrid_process = subprocess.Popen(
         [sys.executable, os.path.join(script_dir, "CollatzEngine.py")],
         cwd=script_dir,
@@ -120,41 +177,49 @@ def main():
         text=True,
         bufsize=1
     )
-    print(f"✓ Hybrid checker started (PID: {hybrid_process.pid})")
+    print(f"[ENGINE] Started (PID: {hybrid_process.pid})")
     print()
     
-    # Wait 1 minute
-    print("Waiting 60 seconds before starting auto-tuner...")
-    print("(This allows the hybrid checker to establish baseline performance)")
-    try:
-        for i in range(60, 0, -1):
-            print(f"\rStarting auto-tuner in {i} seconds... ", end='', flush=True)
-            time.sleep(1)
-        print("\r" + " " * 50 + "\r", end='')  # Clear the countdown line
-    except KeyboardInterrupt:
-        print("\n\nLauncher interrupted. Stopping hybrid checker...")
-        hybrid_process.terminate()
+    autotuner_process = None
+    
+    if should_run_tuner:
+        # Wait 60 seconds before starting auto-tuner
+        print("Waiting 60 seconds before starting auto-tuner...")
+        print("(This allows the engine to establish baseline performance)")
         try:
-            hybrid_process.wait(timeout=5)
-        except:
-            hybrid_process.kill()
-        print("Stopped.")
-        return
-    
-    # Start the auto-tuner
-    print("Starting Auto-Tuner...")
-    autotuner_process = subprocess.Popen(
-        [sys.executable, os.path.join(script_dir, "auto_tuner.py")],
-        cwd=script_dir,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True,
-        bufsize=1
-    )
-    print(f"✓ Auto-tuner started (PID: {autotuner_process.pid})")
-    print()
-    print("Starting split-screen view in 2 seconds...")
-    time.sleep(2)
+            for i in range(60, 0, -1):
+                print(f"\rStarting auto-tuner in {i} seconds... ", end='', flush=True)
+                time.sleep(1)
+            print("\r" + " " * 50 + "\r", end='')  # Clear the countdown line
+        except KeyboardInterrupt:
+            print("\n\nLauncher interrupted. Stopping engine...")
+            hybrid_process.terminate()
+            try:
+                hybrid_process.wait(timeout=5)
+            except:
+                hybrid_process.kill()
+            print("Stopped.")
+            return
+        
+        # Start the auto-tuner
+        print("Starting Auto-Tuner...")
+        autotuner_process = subprocess.Popen(
+            [sys.executable, os.path.join(script_dir, "auto_tuner.py"), "--auto-resume"],
+            cwd=script_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        
+        print(f"[TUNER] Started (PID: {autotuner_process.pid})")
+        print()
+        print("Starting split-screen view in 2 seconds...")
+        time.sleep(2)
+    else:
+        print("Running in single-screen mode (no auto-tuner needed)")
+        print()
+        time.sleep(2)
     
     # Create output buffers and locks
     hybrid_buffer = []
@@ -168,14 +233,15 @@ def main():
         args=(hybrid_process.stdout, hybrid_buffer, hybrid_lock),
         daemon=True
     )
-    autotuner_reader = threading.Thread(
-        target=read_output,
-        args=(autotuner_process.stdout, tuner_buffer, tuner_lock),
-        daemon=True
-    )
-    
     hybrid_reader.start()
-    autotuner_reader.start()
+    
+    if autotuner_process:
+        autotuner_reader = threading.Thread(
+            target=read_output,
+            args=(autotuner_process.stdout, tuner_buffer, tuner_lock),
+            daemon=True
+        )
+        autotuner_reader.start()
     
     # Track last display state to avoid unnecessary redraws
     last_display = ((), ())
@@ -183,24 +249,32 @@ def main():
     # Main display loop
     try:
         while True:
+            tuner_pid = autotuner_process.pid if autotuner_process else None
             last_display = display_split_screen(
-                hybrid_buffer, tuner_buffer,
+                hybrid_buffer, tuner_buffer if autotuner_process else [],
                 hybrid_lock, tuner_lock,
-                hybrid_process.pid, autotuner_process.pid,
+                hybrid_process.pid, tuner_pid,
                 last_display
             )
             
             # Check if processes are still running
             hybrid_status = hybrid_process.poll()
             if hybrid_status is not None:
-                print(f"\n[WARNING] Hybrid checker exited with code {hybrid_status}")
-                autotuner_process.terminate()
+                print(f"\n[WARNING] Engine exited with code {hybrid_status}")
+                if autotuner_process:
+                    autotuner_process.terminate()
                 break
             
-            autotuner_status = autotuner_process.poll()
-            if autotuner_status is not None:
-                # Tuner finished, just show hybrid
-                pass
+            if autotuner_process:
+                autotuner_status = autotuner_process.poll()
+                if autotuner_status is not None:
+                    # Tuner finished - mark optimization complete
+                    print(f"\n[TUNER] Auto-tuner completed with code {autotuner_status}")
+                    if autotuner_status == 0:
+                        optimization_state.mark_optimization_complete()
+                        print("[OPTIMIZATION] System is now optimized!")
+                        print("[BENCHMARK] Run 'python benchmark.py' for final benchmark")
+                    autotuner_process = None  # Don't check again
             
             time.sleep(1.0)  # Update display once per second (no flicker)
             
@@ -208,8 +282,8 @@ def main():
         clear_screen()
         print("\n\nStopping all processes...")
         
-        # Stop auto-tuner first
-        if autotuner_process.poll() is None:
+        # Stop auto-tuner first (if running)
+        if autotuner_process and autotuner_process.poll() is None:
             print("Stopping auto-tuner...")
             autotuner_process.terminate()
             try:
@@ -217,9 +291,9 @@ def main():
             except:
                 autotuner_process.kill()
         
-        # Stop hybrid checker
+        # Stop engine
         if hybrid_process.poll() is None:
-            print("Stopping hybrid checker...")
+            print("Stopping engine...")
             hybrid_process.terminate()
             try:
                 hybrid_process.wait(timeout=5)

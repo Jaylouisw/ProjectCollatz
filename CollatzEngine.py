@@ -1,6 +1,10 @@
 """
 COLLATZ CONJECTURE - HYBRID PROOF ENGINE
 =========================================
+Copyright (c) 2025 Jay (CollatzEngine)
+Licensed under CC BY-NC-SA 4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
 Features:
 - Automatically uses GPU if available (preferred)
 - Falls back to CPU-only if no GPU
@@ -24,13 +28,27 @@ from datetime import datetime
 from multiprocessing import Pool, Process, Queue as MPQueue, cpu_count
 from queue import Empty
 
-# Try to import GPU support
+# Import error handler
 try:
-    import cupy as cp
-    GPU_AVAILABLE = True
+    from error_handler import logger, safe_import_cupy, check_config_validity
+    ERROR_HANDLING = True
 except ImportError:
-    GPU_AVAILABLE = False
-    cp = None
+    ERROR_HANDLING = False
+    logger = None
+    print("Warning: Error handler not available")
+
+# Try to import GPU support with error handling
+if ERROR_HANDLING:
+    cp, GPU_AVAILABLE, gpu_msg = safe_import_cupy()
+    if not GPU_AVAILABLE:
+        print(f"GPU Status: {gpu_msg}")
+else:
+    try:
+        import cupy as cp
+        GPU_AVAILABLE = True
+    except ImportError:
+        GPU_AVAILABLE = False
+        cp = None
 
 # Import contribution tracker
 try:
@@ -106,6 +124,15 @@ def load_config():
     """Load saved progress."""
     if os.path.exists(CONFIG_FILE):
         try:
+            # Validate config file if error handling available
+            if ERROR_HANDLING:
+                valid, msg, config = check_config_validity(CONFIG_FILE)
+                if not valid:
+                    logger.log_error('config_load', f'Config validation failed: {msg}')
+                    print(f"[WARNING] {msg}")
+                    print("[WARNING] Using default configuration")
+                    return 0, 0, 0, 0
+            
             with open(CONFIG_FILE, 'r') as f:
                 config = json.load(f)
                 highest = config.get('highest_proven', 0)
@@ -114,8 +141,18 @@ def load_config():
                 max_steps_ever = config.get('max_steps_ever', 0)
                 print(f"[RESUME] Loaded: Highest={highest:,}, Total={total:,}, Runtime={format_time(total_runtime)}")
                 return highest, total, total_runtime, max_steps_ever
+        except json.JSONDecodeError as e:
+            if ERROR_HANDLING:
+                logger.log_error('config_load', 'Invalid JSON in config file', 
+                               {'error': str(e)}, e)
+            print(f"[ERROR] Config file corrupted: {e}")
+            print("[WARNING] Starting fresh")
+            return 0, 0, 0, 0
         except Exception as e:
+            if ERROR_HANDLING:
+                logger.log_error('config_load', 'Unexpected error loading config', None, e)
             print(f"[WARNING] Config load failed: {e}")
+            return 0, 0, 0, 0
     return 0, 0, 0, 0
 
 def save_config(highest_proven, total_tested, total_runtime_seconds=None, max_steps_ever=None, record_contribution=False, session_tested=0):
@@ -189,8 +226,23 @@ def get_gpu_config():
     try:
         # Load tuning parameters, use defaults if file doesn't exist
         try:
-            with open('gpu_tuning.json', 'r') as f:
-                tuning = json.load(f)
+            if ERROR_HANDLING:
+                valid, msg, tuning = check_config_validity('gpu_tuning.json')
+                if not valid:
+                    logger.log_error('gpu_config', f'GPU tuning config invalid: {msg}')
+                    print(f"[WARNING] {msg}")
+                    print("[WARNING] Using default GPU tuning")
+                    tuning = {
+                        'work_multiplier': 800,
+                        'threads_per_block_multiplier': 8,
+                        'blocks_per_sm': 4,
+                        'memory_usage_percent': 5,
+                        'batch_size_override': None,
+                        'cpu_workers': None
+                    }
+            else:
+                with open('gpu_tuning.json', 'r') as f:
+                    tuning = json.load(f)
         except FileNotFoundError:
             tuning = {
                 'work_multiplier': 800,
@@ -199,6 +251,19 @@ def get_gpu_config():
                 'memory_usage_percent': 5,
                 'batch_size_override': None,
                 'cpu_workers': None  # None = auto-detect, or specific number
+            }
+        except Exception as e:
+            if ERROR_HANDLING:
+                logger.log_error('gpu_config', 'Error loading GPU tuning config', None, e)
+            print(f"[WARNING] Error loading GPU tuning: {e}")
+            print("[WARNING] Using defaults")
+            tuning = {
+                'work_multiplier': 800,
+                'threads_per_block_multiplier': 8,
+                'blocks_per_sm': 4,
+                'memory_usage_percent': 5,
+                'batch_size_override': None,
+                'cpu_workers': None
             }
         
         device = cp.cuda.Device()
@@ -242,8 +307,17 @@ def get_gpu_config():
             'vram_free': mem_info[0],
             'tuning': tuning  # Include tuning config for CPU workers
         }
+    except cp.cuda.runtime.CUDARuntimeError as e:
+        if ERROR_HANDLING:
+            logger.log_error('gpu_runtime', 'CUDA runtime error during GPU initialization',
+                           {'error_code': str(e)}, e)
+        print(f"[ERROR] CUDA runtime error: {e}")
+        print("[ERROR] This may indicate driver issues or GPU hardware problems")
+        return None
     except Exception as e:
-        print(f"GPU initialization failed: {e}")
+        if ERROR_HANDLING:
+            logger.log_error('gpu_initialization', 'GPU initialization failed', None, e)
+        print(f"[ERROR] GPU initialization failed: {e}")
         return None
 
 # GPU kernel for Collatz checking
