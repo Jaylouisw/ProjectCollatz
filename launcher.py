@@ -167,10 +167,32 @@ def main():
             print("[BENCHMARK] Final benchmark recommended - run: python benchmark.py")
     print()
     
+    # Ask user for mode selection
+    print("Select execution mode:")
+    print("  1) GPU mode (GPU + CPU workers)")
+    print("  2) CPU-only mode")
+    print("  3) Auto-detect (default)")
+    print()
+    
+    mode_choice = input("Enter choice (1/2/3 or press Enter for auto): ").strip()
+    
+    if mode_choice == '1':
+        mode_arg = 'gpu'
+    elif mode_choice == '2':
+        mode_arg = 'cpu'
+    else:
+        mode_arg = None  # Auto-detect
+    
+    print()
+    
     # Start the CollatzEngine in the background
     print("Starting Collatz Engine...")
+    engine_cmd = [sys.executable, os.path.join(script_dir, "CollatzEngine.py")]
+    if mode_arg:
+        engine_cmd.append(mode_arg)
+    
     hybrid_process = subprocess.Popen(
-        [sys.executable, os.path.join(script_dir, "CollatzEngine.py")],
+        engine_cmd,
         cwd=script_dir,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
