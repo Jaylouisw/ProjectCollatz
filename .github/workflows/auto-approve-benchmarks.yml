@@ -1,0 +1,120 @@
+name: Auto-Approve Benchmark PRs
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'benchmarks/benchmark_*.json'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  validate-and-approve:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+        with:
+          files: |
+            benchmarks/benchmark_*.json
+      
+      - name: Validate benchmark PR
+        id: validate
+        run: |
+          echo "Validating benchmark PR..."
+          
+          # Check if PR only contains benchmark files
+          all_files="${{ steps.changed-files.outputs.all_changed_files }}"
+          benchmark_files="${{ steps.changed-files.outputs.all_changed_files }}"
+          
+          # Count total changed files
+          total_count=$(echo "$all_files" | wc -w)
+          
+          # Check if all files are in benchmarks/ directory
+          valid=true
+          for file in $all_files; do
+            if [[ ! "$file" =~ ^benchmarks/benchmark_.*\.json$ ]]; then
+              echo "::error::PR contains non-benchmark file: $file"
+              valid=false
+            fi
+          done
+          
+          if [ "$valid" = true ]; then
+            echo "✓ PR only contains benchmark files"
+            echo "valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "✗ PR contains non-benchmark files"
+            echo "valid=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          # Validate JSON format
+          for file in $benchmark_files; do
+            if [ -f "$file" ]; then
+              echo "Validating JSON format for $file..."
+              if ! python3 -m json.tool "$file" > /dev/null 2>&1; then
+                echo "::error::Invalid JSON format in $file"
+                echo "valid=false" >> $GITHUB_OUTPUT
+                exit 1
+              fi
+              echo "✓ Valid JSON: $file"
+            fi
+          done
+          
+          echo "✓ All validations passed"
+      
+      - name: Auto-approve PR
+        if: steps.validate.outputs.valid == 'true'
+        uses: hmarr/auto-approve-action@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Add success label
+        if: steps.validate.outputs.valid == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['benchmark', 'auto-approved']
+            });
+      
+      - name: Auto-merge PR
+        if: steps.validate.outputs.valid == 'true'
+        uses: pascalgn/automerge-action@v0.16.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_LABELS: "auto-approved"
+          MERGE_METHOD: "squash"
+          MERGE_COMMIT_MESSAGE: "pull-request-title"
+          MERGE_RETRIES: 6
+          MERGE_RETRY_SLEEP: 10000
+      
+      - name: Comment on PR
+        if: steps.validate.outputs.valid == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '✅ **Benchmark PR Auto-Approved**\n\n' +
+                    'This PR has been automatically validated and approved because:\n' +
+                    '- ✓ Contains only benchmark JSON files\n' +
+                    '- ✓ All files are in `benchmarks/` directory\n' +
+                    '- ✓ All JSON files are valid\n\n' +
+                    'Thank you for contributing benchmark data! 🚀'
+            });

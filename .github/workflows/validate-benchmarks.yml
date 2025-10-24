@@ -1,0 +1,121 @@
+name: Benchmark PR Validator
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v41
+      
+      - name: Validate benchmark submissions
+        id: validate
+        run: |
+          echo "Changed files: ${{ steps.changed-files.outputs.all_changed_files }}"
+          
+          benchmark_count=0
+          non_benchmark_count=0
+          
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            if [[ "$file" =~ ^benchmarks/benchmark_.*\.json$ ]]; then
+              benchmark_count=$((benchmark_count + 1))
+              
+              # Validate JSON
+              if [ -f "$file" ]; then
+                echo "Validating $file..."
+                
+                # Check JSON syntax
+                if ! python3 -m json.tool "$file" > /dev/null 2>&1; then
+                  echo "::error file=$file::Invalid JSON format"
+                  exit 1
+                fi
+                
+                # Check for required fields
+                python3 << EOF
+          import json
+          import sys
+          
+          with open('$file', 'r') as f:
+              data = json.load(f)
+          
+          required_fields = ['timestamp', 'hardware', 'performance']
+          missing = [f for f in required_fields if f not in data]
+          
+          if missing:
+              print(f"::warning file=$file::Missing recommended fields: {', '.join(missing)}")
+          else:
+              print(f"✓ All recommended fields present in $file")
+          EOF
+                
+                echo "✓ Valid benchmark file: $file"
+              fi
+            else
+              non_benchmark_count=$((non_benchmark_count + 1))
+              echo "::notice file=$file::Non-benchmark file detected"
+            fi
+          done
+          
+          echo "benchmark_count=$benchmark_count" >> $GITHUB_OUTPUT
+          echo "non_benchmark_count=$non_benchmark_count" >> $GITHUB_OUTPUT
+          
+          if [ $benchmark_count -eq 0 ]; then
+            echo "::notice::No benchmark files in this PR"
+          elif [ $non_benchmark_count -eq 0 ]; then
+            echo "::notice::✓ Pure benchmark PR (auto-approval eligible)"
+            echo "is_pure_benchmark=true" >> $GITHUB_OUTPUT
+          else
+            echo "::notice::Mixed PR with $benchmark_count benchmark(s) and $non_benchmark_count other file(s)"
+            echo "is_pure_benchmark=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Comment validation results
+        if: steps.validate.outputs.benchmark_count > 0
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const isPure = '${{ steps.validate.outputs.is_pure_benchmark }}' === 'true';
+            const benchmarkCount = '${{ steps.validate.outputs.benchmark_count }}';
+            const nonBenchmarkCount = '${{ steps.validate.outputs.non_benchmark_count }}';
+            
+            let message = '## 📊 Benchmark Validation Results\n\n';
+            
+            if (isPure) {
+              message += '✅ **Pure benchmark PR detected**\n\n';
+              message += `- ${benchmarkCount} benchmark file(s) added\n`;
+              message += '- No other files modified\n';
+              message += '- All JSON files are valid\n\n';
+              message += '🤖 This PR is eligible for auto-approval and will be merged automatically.';
+            } else {
+              message += '⚠️ **Mixed PR detected**\n\n';
+              message += `- ${benchmarkCount} benchmark file(s)\n`;
+              message += `- ${nonBenchmarkCount} other file(s)\n\n`;
+              message += '⚠️ This PR contains non-benchmark files and requires manual review.';
+            }
+            
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: message
+            });
