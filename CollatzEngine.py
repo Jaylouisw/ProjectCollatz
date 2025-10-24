@@ -1,7 +1,7 @@
 """
 COLLATZ CONJECTURE - HYBRID PROOF ENGINE
 =========================================
-Copyright (c) 2025 Jay (CollatzEngine)
+Copyright (c) 2025 Jay Wenden (CollatzEngine)
 Licensed under CC BY-NC-SA 4.0
 https://creativecommons.org/licenses/by-nc-sa/4.0/
 
@@ -65,6 +65,37 @@ SAVE_INTERVAL = 10000000000  # Save every 10B (frequent saves for auto-tuner acc
 NUM_STREAMS = 4
 
 shutdown_flag = False
+
+def detect_gpus():
+    """Detect all available GPUs and return their properties."""
+    if not GPU_AVAILABLE:
+        return []
+    
+    try:
+        gpu_count = cp.cuda.runtime.getDeviceCount()
+        gpus = []
+        
+        for i in range(gpu_count):
+            with cp.cuda.Device(i):
+                props = cp.cuda.runtime.getDeviceProperties(i)
+                mem_info = cp.cuda.Device(i).mem_info
+                
+                gpu_info = {
+                    'id': i,
+                    'name': props['name'].decode() if isinstance(props['name'], bytes) else props['name'],
+                    'total_memory': mem_info[1],
+                    'free_memory': mem_info[0],
+                    'compute_capability': f"{props['major']}.{props['minor']}",
+                    'multiprocessor_count': props['multiProcessorCount'],
+                    'max_threads_per_sm': props['maxThreadsPerMultiProcessor'],
+                    'warp_size': props['warpSize']
+                }
+                gpus.append(gpu_info)
+        
+        return gpus
+    except Exception as e:
+        print(f"[WARNING] GPU detection failed: {e}")
+        return []
 
 def signal_handler(sig, frame):
     global shutdown_flag
@@ -749,6 +780,65 @@ def cpu_collatz_worker(task_queue, result_queue, start_range):
             except:
                 pass
 
+def check_batch_multigpu(position, batch_size, highest_proven, threads_per_block, gpu_list):
+    """Check a batch across multiple GPUs in parallel.
+    Splits the batch across all available GPUs for maximum throughput."""
+    if len(gpu_list) == 1:
+        # Single GPU - use regular function
+        with cp.cuda.Device(gpu_list[0]['id']):
+            return check_batch_gpu(position, batch_size, highest_proven, threads_per_block)
+    
+    # Multi-GPU: split batch across devices
+    gpus_count = len(gpu_list)
+    batch_per_gpu = batch_size // gpus_count
+    remainder = batch_size % gpus_count
+    
+    results_list = [None] * gpus_count
+    import threading
+    
+    def gpu_worker(gpu_idx, gpu_info, start_pos, gpu_batch_size):
+        """Worker function to run batch on specific GPU."""
+        try:
+            with cp.cuda.Device(gpu_info['id']):
+                result = check_batch_gpu(start_pos, gpu_batch_size, highest_proven, threads_per_block)
+                results_list[gpu_idx] = result
+        except Exception as e:
+            print(f"\n[GPU {gpu_info['id']} ERROR] {e}")
+            results_list[gpu_idx] = None
+    
+    # Launch parallel GPU workers
+    threads = []
+    current_pos = position
+    
+    for idx, gpu_info in enumerate(gpu_list):
+        # Distribute remainder across first GPUs
+        gpu_batch = batch_per_gpu + (1 if idx < remainder else 0)
+        
+        thread = threading.Thread(
+            target=gpu_worker,
+            args=(idx, gpu_info, current_pos, gpu_batch)
+        )
+        thread.start()
+        threads.append(thread)
+        
+        current_pos += gpu_batch * 2  # Skip to next odd number range
+    
+    # Wait for all GPUs to complete
+    for thread in threads:
+        thread.join()
+    
+    # Aggregate results
+    all_passed = all(r == 1 if r is not None else False for r in results_list)
+    any_failed = any(r == -1 if r is not None else False for r in results_list)
+    any_inconclusive = any(r == 0 if r is not None else False for r in results_list)
+    
+    if any_failed:
+        return -1  # Counterexample found
+    elif all_passed:
+        return 1  # All proven
+    else:
+        return 0  # Inconclusive (needs CPU)
+
 def run_gpu_mode():
     """Run in GPU mode with CPU workers for difficult numbers."""
     global shutdown_flag
@@ -785,12 +875,30 @@ def run_gpu_mode():
     print("COLLATZ HYBRID PROOF ENGINE - GPU MODE")
     print("=" * 70)
     
+    # Detect all available GPUs
+    available_gpus = detect_gpus()
+    num_gpus = len(available_gpus)
+    
+    if num_gpus == 0:
+        print("No GPUs detected. Falling back to CPU mode.")
+        return run_cpu_mode()
+    
+    print(f"Detected {num_gpus} GPU{'s' if num_gpus > 1 else ''}:")
+    for gpu in available_gpus:
+        vram_gb = gpu['total_memory'] / (1024**3)
+        print(f"  [{gpu['id']}] {gpu['name']} - {vram_gb:.1f}GB, {gpu['multiprocessor_count']} SMs")
+    
+    if num_gpus > 1:
+        print(f"\n[MULTI-GPU] Using all {num_gpus} GPUs for parallel processing")
+        print("[MULTI-GPU] Workload will be distributed across all devices")
+    print()
+    
     gpu_config = get_gpu_config()
     if gpu_config is None:
         print("Failed to initialize GPU. Falling back to CPU mode.")
         return run_cpu_mode()
     
-    print(f"GPU: {gpu_config['name']}")
+    print(f"Primary GPU: {gpu_config['name']}")
     print(f"VRAM: {gpu_config['vram_total'] / 1024**3:.1f} GB total, {gpu_config['vram_free'] / 1024**3:.1f} GB free")
     print(f"CUDA Cores: {gpu_config['cuda_cores']}")
     print(f"Streaming Multiprocessors: {gpu_config['sm_count']}")
@@ -846,10 +954,23 @@ def run_gpu_mode():
     cpu_check_interval = 100  # Check CPU results every 100 batches instead of every batch
     shutdown_check_interval = 50  # Check shutdown flag every 50 batches (reduces global variable access)
     
+    # Use multi-GPU if available
+    use_multigpu = num_gpus > 1
+    
     try:
         while True:
-            result = check_batch_gpu(position, batch_size, highest_proven, threads_per_block)
-            result_type = result[0]
+            if use_multigpu:
+                # Multi-GPU: distribute batch across all GPUs
+                result = check_batch_multigpu(position, batch_size, highest_proven, threads_per_block, available_gpus)
+                result_type = (result, None)  # Multi-GPU returns simple result code
+            else:
+                # Single GPU: use regular batch checker
+                result = check_batch_gpu(position, batch_size, highest_proven, threads_per_block)
+                result_type = result[0]
+            
+            # Handle results uniformly
+            if isinstance(result_type, tuple):
+                result_type = result_type[0]
             
             if result_type == 'disproven':
                 counterexample = result[1]
