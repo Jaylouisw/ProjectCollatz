@@ -1,0 +1,13 @@
+# Distributed Collatz Requirements
+# Install with: pip install -r requirements_distributed.txt
+
+# IPFS connectivity
+ipfshttpclient>=0.8.0
+
+# Cryptography for Ed25519 signatures
+cryptography>=41.0.0
+
+# Core CollatzEngine dependencies (from main requirements)
+cupy-cuda12x>=12.0.0  # For NVIDIA GPU support (CUDA 12.x)
+numpy>=1.24.0
+psutil>=5.9.0

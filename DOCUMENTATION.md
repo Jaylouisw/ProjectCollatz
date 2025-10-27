@@ -28,6 +28,59 @@ Complete guide to all Collatz Engine documentation.
 - Reddit community feedback analysis
 - Performance benchmarks and trade-offs
 
+🔬 **[simd_collatz.py](simd_collatz.py)** - CPU SIMD proof-of-concept
+- NumPy vectorization attempt
+- Benchmark results (2.3x slower than scalar!)
+- Why SIMD doesn't help Collatz verification
+
+## Distributed Network (NEW!)
+
+🌐 **[DISTRIBUTED.md](DISTRIBUTED.md)** - **Complete distributed verification guide**
+- **Architecture:** Decentralized coordination via IPFS
+- **Security Model:** Ed25519 signatures, Byzantine fault tolerance
+- **Trust System:** Worker reputation and consensus requirements
+- **Getting Started:** How to join as a worker node
+- **Monitoring:** Network statistics and leaderboards
+- **Advanced Usage:** Conflict resolution, cross-verification
+
+**System Components:**
+- 🔐 **[trust_system.py](trust_system.py)** - Worker reputation tracking
+  - Trust levels (UNTRUSTED → VERIFIED → TRUSTED → ELITE)
+  - Consensus calculation (3+ workers per range)
+  - Automatic bad-actor detection and banning
+  - Reputation scoring with decay for inactivity
+
+- 📡 **[ipfs_coordinator.py](ipfs_coordinator.py)** - Work distribution
+  - IPFS/IPNS state management (no deprecated pubsub!)
+  - Work assignment with redundancy factor
+  - Automatic timeout and reassignment
+  - Global progress tracking
+
+- ✍️ **[proof_verification.py](proof_verification.py)** - Cryptographic proofs
+  - Ed25519 signature generation and verification
+  - SHA-256 proof integrity checking
+  - Cross-verification between workers
+  - Conflict detection and resolution
+
+- 🏭 **[distributed_collatz.py](distributed_collatz.py)** - Worker node
+  - Integration with CollatzEngine
+  - Keypair management
+  - Work claiming and proof submission
+  - Trust building over time
+
+**Installation:**
+```bash
+# Install IPFS: https://docs.ipfs.tech/install/
+ipfs init
+ipfs daemon &
+
+# Install Python dependencies
+pip install -r requirements_distributed.txt
+
+# Start worker node
+python distributed_collatz.py
+```
+
 🔬 **[simd_collatz.py](simd_collatz.py)** - SIMD investigation proof-of-concept
 - NumPy vectorization attempt
 - Why it's 2x slower than scalar

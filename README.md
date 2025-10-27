@@ -6,6 +6,7 @@ A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, 
 
 ## Features
 
+### Local Verification
 - **Multi-GPU support** - Automatically detects and uses all available GPUs in parallel
 - **Hybrid CPU+GPU architecture** - Maximizes throughput using CuPy for CUDA acceleration
 - **CPU-only mode** - Runs on systems without GPU (automatic fallback)
@@ -16,8 +17,17 @@ A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, 
 - **Persistent state** - Resume capability with checkpoint system
 - **Real-time monitoring** - Split-screen display for checker and tuner
 - **Multi-stage optimization** - Binary search + fine-tuning + progressive refinement
-- **Contribution tracking** - Track and share verification progress across a distributed network
 - **System diagnostics** - Built-in health checks and troubleshooting
+
+### Distributed Network (NEW!)
+- **🌐 Decentralized verification** via IPFS (no central server)
+- **🔐 Cryptographic proofs** with Ed25519 signatures (tamper-proof)
+- **👥 Multi-worker consensus** (3+ workers verify each range)
+- **⭐ Trust & reputation system** with automatic bad-actor detection
+- **🛡️ Byzantine fault tolerance** via redundant verification
+- **📊 Public verification records** stored permanently on IPFS
+
+**→ See [DISTRIBUTED.md](DISTRIBUTED.md) for full details on joining the distributed network!**
 
 ## Performance
 
