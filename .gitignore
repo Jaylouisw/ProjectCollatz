@@ -18,6 +18,9 @@ gpu_tuning.json
 # Contributions can be shared but don't commit by default
 # contributions.json
 
+# Admin-only scripts (DO NOT DISTRIBUTE)
+admin_initialize_production.py
+
 # Python cache
 __pycache__/
 *.pyc

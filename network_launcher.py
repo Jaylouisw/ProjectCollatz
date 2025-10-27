@@ -126,8 +126,7 @@ class CollatzLauncher:
         print()
         print("  SYSTEM:")
         print("   10. Run Diagnostics")
-        print("   11. Initialize for Production (DANGER!)")
-        print("   12. Check IPFS Status")
+        print("   11. Check IPFS Status")
         print()
         print("    0. Exit")
         print()
@@ -387,27 +386,6 @@ class CollatzLauncher:
         subprocess.run([sys.executable, "run_diagnostics.py"])
         input("\nPress ENTER to continue...")
     
-    def initialize_production(self):
-        self.clear_screen()
-        self.print_header()
-        print("INITIALIZE FOR PRODUCTION")
-        print("-" * 70)
-        print()
-        print("WARNING: This will reset the network to start at 2^71!")
-        print("         This should ONLY be done ONCE before launch.")
-        print()
-        
-        confirm = input("Type 'YES' to confirm: ").strip()
-        
-        if confirm == "YES":
-            print()
-            print("Initializing production state...")
-            subprocess.run([sys.executable, "production_init.py"])
-        else:
-            print("\nCanceled.")
-        
-        input("\nPress ENTER to continue...")
-    
     def check_ipfs_status(self):
         self.clear_screen()
         self.print_header()
@@ -460,8 +438,6 @@ class CollatzLauncher:
             elif choice == 10:
                 self.run_diagnostics()
             elif choice == 11:
-                self.initialize_production()
-            elif choice == 12:
                 self.check_ipfs_status()
             else:
                 print("\nInvalid choice. Please try again.")
