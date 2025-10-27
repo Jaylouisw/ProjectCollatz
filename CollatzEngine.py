@@ -1383,6 +1383,77 @@ def main():
         print("\nPlease report this error with the above information.")
         sys.exit(1)
 
+
+# API functions for distributed_collatz.py
+def gpu_check_range(start: int, end: int) -> dict:
+    """Check a range of numbers using GPU (API for distributed workers)."""
+    if not GPU_AVAILABLE:
+        return cpu_check_range(start, end)
+    
+    numbers_checked = 0
+    batch_size = 1000000
+    config = get_gpu_config()
+    highest_proven = end
+    
+    try:
+        current = start
+        while current < end:
+            batch_end = min(current + batch_size, end)
+            result = check_batch_gpu(current, batch_end - current, highest_proven, 
+                                    config['threads_per_block'])
+            
+            if result['counterexample'] is not None:
+                return {
+                    "counterexample": result['counterexample'],
+                    "numbers_checked": numbers_checked + result['numbers_checked']
+                }
+            
+            numbers_checked += result['numbers_checked']
+            current = batch_end
+        
+        return {"counterexample": None, "numbers_checked": numbers_checked}
+    except Exception as e:
+        print(f"[GPU ERROR] {e}, falling back to CPU")
+        return cpu_check_range(start, end)
+
+
+def cpu_check_range(start: int, end: int) -> dict:
+    """Check a range of numbers using CPU (API for distributed workers)."""
+    import multiprocessing as mp
+    
+    numbers_checked = 0
+    chunk_size = 10000
+    num_workers = min(mp.cpu_count(), 8)
+    pool = mp.Pool(num_workers, initializer=init_worker)
+    
+    try:
+        ranges = []
+        current = start
+        while current < end:
+            chunk_end = min(current + chunk_size, end)
+            ranges.append((current, chunk_end, end))
+            current = chunk_end
+        
+        results = pool.map(worker_check_range, ranges)
+        pool.close()
+        pool.join()
+        
+        for result in results:
+            if result['counterexample'] is not None:
+                return {
+                    "counterexample": result['counterexample'],
+                    "numbers_checked": numbers_checked + result['numbers_checked']
+                }
+            numbers_checked += result['numbers_checked']
+        
+        return {"counterexample": None, "numbers_checked": numbers_checked}
+        
+    except Exception as e:
+        pool.terminate()
+        pool.join()
+        raise e
+
+
 if __name__ == '__main__':
     from multiprocessing import freeze_support
     freeze_support()
