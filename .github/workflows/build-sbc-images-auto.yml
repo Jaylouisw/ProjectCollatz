@@ -1,0 +1,380 @@
+name: Build Multi-Platform SBC Images (Auto)
+
+on:
+  push:
+    tags:
+      - 'v*'  # Trigger on version tags (e.g., v1.0.0, v1.0.1)
+  release:
+    types: [published]
+  workflow_dispatch:  # Manual trigger for testing
+    inputs:
+      create_release:
+        description: 'Create GitHub release with built images'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  # Build each platform separately to avoid resource conflicts
+  build-rpi4-arm64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Generate version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-$(date +%Y%m%d)-${GITHUB_SHA:0:8}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+          
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache || true
+          sudo apt-get autoremove -y && sudo apt-get autoclean || true
+          
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip xz-utils parted kpartx e2fsprogs dosfstools qemu-user-static binfmt-support bc file util-linux
+          sudo update-binfmts --enable qemu-arm || true
+          sudo update-binfmts --enable qemu-aarch64 || true
+          
+      - name: Build rpi4-arm64 image
+        run: |
+          chmod +x build-pi-image.sh
+          mkdir -p logs artifacts
+          if ! timeout 150m ./build-pi-image.sh --platform=rpi4-arm64 2>&1 | tee logs/build-rpi4-arm64.log; then
+            echo "Build failed. Last 50 lines:"
+            tail -50 logs/build-rpi4-arm64.log
+            exit 1
+          fi
+          
+          # Package results
+          find pi-build/rpi4-arm64/ -name "*.img" -o -name "*.img.xz" | while read img; do
+            if [[ ! "$img" =~ \.xz$ ]]; then
+              xz -9 "$img" && img="$img.xz"
+            fi
+            final_name="collatz-network-rpi4-arm64-${{ steps.version.outputs.version }}.img.xz"
+            cp "$img" "artifacts/$final_name"
+            cd artifacts && sha256sum "$final_name" > "${final_name}.sha256" && cd ..
+          done
+          
+      - name: Upload rpi4-arm64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbc-rpi4-arm64
+          path: artifacts/
+          retention-days: 30
+
+  build-rpi4-arm32:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Generate version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-$(date +%Y%m%d)-${GITHUB_SHA:0:8}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache || true
+          sudo apt-get autoremove -y && sudo apt-get autoclean || true
+          
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip xz-utils parted kpartx e2fsprogs dosfstools qemu-user-static binfmt-support bc file util-linux
+          sudo update-binfmts --enable qemu-arm || true
+          
+      - name: Build rpi4-arm32 image
+        run: |
+          chmod +x build-pi-image.sh
+          mkdir -p logs artifacts
+          if ! timeout 150m ./build-pi-image.sh --platform=rpi4-arm32 2>&1 | tee logs/build-rpi4-arm32.log; then
+            echo "Build failed. Last 50 lines:"
+            tail -50 logs/build-rpi4-arm32.log
+            exit 1
+          fi
+          
+          # Package results
+          find pi-build/rpi4-arm32/ -name "*.img" -o -name "*.img.xz" | while read img; do
+            if [[ ! "$img" =~ \.xz$ ]]; then
+              xz -9 "$img" && img="$img.xz"
+            fi
+            final_name="collatz-network-rpi4-arm32-${{ steps.version.outputs.version }}.img.xz"
+            cp "$img" "artifacts/$final_name"
+            cd artifacts && sha256sum "$final_name" > "${final_name}.sha256" && cd ..
+          done
+          
+      - name: Upload rpi4-arm32 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbc-rpi4-arm32
+          path: artifacts/
+          retention-days: 30
+
+  build-rpi-zero2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Generate version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-$(date +%Y%m%d)-${GITHUB_SHA:0:8}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache || true
+          sudo apt-get autoremove -y && sudo apt-get autoclean || true
+          
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip xz-utils parted kpartx e2fsprogs dosfstools qemu-user-static binfmt-support bc file util-linux
+          sudo update-binfmts --enable qemu-aarch64 || true
+          
+      - name: Build rpi-zero2 image
+        run: |
+          chmod +x build-pi-image.sh
+          mkdir -p logs artifacts
+          if ! timeout 150m ./build-pi-image.sh --platform=rpi-zero2 2>&1 | tee logs/build-rpi-zero2.log; then
+            echo "Build failed. Last 50 lines:"
+            tail -50 logs/build-rpi-zero2.log
+            exit 1
+          fi
+          
+          # Package results
+          find pi-build/rpi-zero2/ -name "*.img" -o -name "*.img.xz" | while read img; do
+            if [[ ! "$img" =~ \.xz$ ]]; then
+              xz -9 "$img" && img="$img.xz"
+            fi
+            final_name="collatz-network-rpi-zero2-${{ steps.version.outputs.version }}.img.xz"
+            cp "$img" "artifacts/$final_name"
+            cd artifacts && sha256sum "$final_name" > "${final_name}.sha256" && cd ..
+          done
+          
+      - name: Upload rpi-zero2 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbc-rpi-zero2
+          path: artifacts/
+          retention-days: 30
+
+  build-ubuntu-arm64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Generate version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-$(date +%Y%m%d)-${GITHUB_SHA:0:8}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache || true
+          sudo apt-get autoremove -y && sudo apt-get autoclean || true
+          
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget unzip xz-utils parted kpartx e2fsprogs dosfstools qemu-user-static binfmt-support bc file util-linux
+          sudo update-binfmts --enable qemu-aarch64 || true
+          
+      - name: Build ubuntu-arm64 image
+        run: |
+          chmod +x build-pi-image.sh
+          mkdir -p logs artifacts
+          if ! timeout 150m ./build-pi-image.sh --platform=ubuntu-arm64 2>&1 | tee logs/build-ubuntu-arm64.log; then
+            echo "Build failed. Last 50 lines:"
+            tail -50 logs/build-ubuntu-arm64.log
+            exit 1
+          fi
+          
+          # Package results
+          find pi-build/ubuntu-arm64/ -name "*.img" -o -name "*.img.xz" | while read img; do
+            if [[ ! "$img" =~ \.xz$ ]]; then
+              xz -9 "$img" && img="$img.xz"
+            fi
+            final_name="collatz-network-ubuntu-arm64-${{ steps.version.outputs.version }}.img.xz"
+            cp "$img" "artifacts/$final_name"
+            cd artifacts && sha256sum "$final_name" > "${final_name}.sha256" && cd ..
+          done
+          
+      - name: Upload ubuntu-arm64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbc-ubuntu-arm64
+          path: artifacts/
+          retention-days: 30
+
+  # Create GitHub release with all built images
+  create-release:
+    needs: [build-rpi4-arm64, build-rpi4-arm32, build-rpi-zero2, build-ubuntu-arm64]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true')
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Generate version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-$(date +%Y%m%d)-${GITHUB_SHA:0:8}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts/
+          
+      - name: Prepare release
+        run: |
+          mkdir -p release-files
+          find release-artifacts/ -name "*.img.xz" -exec cp {} release-files/ \;
+          find release-artifacts/ -name "*.sha256" -exec cp {} release-files/ \;
+          
+          cd release-files
+          cat *.sha256 > ALL-CHECKSUMS.sha256
+          
+          # Create installation guide
+          cat > INSTALLATION-GUIDE.md << 'EOF'
+          # Collatz Network SBC Images - Installation Guide
+          
+          ## Quick Start
+          1. Download the appropriate image for your device
+          2. Verify with SHA256 checksum: `sha256sum -c filename.sha256`
+          3. Flash to SD card using [Etcher](https://www.balena.io/etcher/)
+          4. Boot device and wait 5-10 minutes for setup
+          5. SSH: `ssh pi@<device-ip>` (password: `raspberry`)
+          6. Run: `cd ~/collatz-network && python3 network_launcher.py`
+          
+          ## Supported Devices
+          - **rpi4-arm64**: Raspberry Pi 4/400/CM4 (64-bit)
+          - **rpi4-arm32**: Raspberry Pi 4/400/CM4 (32-bit) 
+          - **rpi-zero2**: Raspberry Pi Zero 2 W
+          - **ubuntu-arm64**: Orange Pi, Rock Pi, Odroid (64-bit ARM)
+          
+          ## First Boot
+          - Setup takes 5-10 minutes on first boot
+          - SSH enabled by default
+          - Wi-Fi: edit `/boot/wpa_supplicant.conf` before boot
+          - **Change default password after first login!**
+          EOF
+          
+          echo "Release contents:"
+          ls -lh
+          
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Collatz Network SBC Images ${{ steps.version.outputs.version }}
+          body: |
+            # Collatz Distributed Network - Multi-Platform SBC Images
+            
+            Pre-built SD card images with Collatz Network software pre-installed and ready to use.
+            
+            ## What's Included
+            - ✅ Collatz Network software pre-installed
+            - ✅ IPFS daemon auto-configured  
+            - ✅ Python dependencies ready
+            - ✅ SSH enabled by default
+            - ✅ Auto-start service configured
+            
+            ## Supported Devices
+            - **Raspberry Pi 4/400/CM4** (64-bit and 32-bit versions)
+            - **Raspberry Pi Zero 2 W** (64-bit)
+            - **Orange Pi, Rock Pi, Odroid** (Ubuntu ARM64)
+            
+            ## Installation
+            1. Download appropriate `.img.xz` file for your device
+            2. Verify: `sha256sum -c <filename>.sha256`
+            3. Flash with [Etcher](https://www.balena.io/etcher/)
+            4. Boot and wait 5-10 minutes for setup
+            5. SSH: `ssh pi@<device-ip>` (default password: `raspberry`)
+            6. Run: `cd ~/collatz-network && python3 network_launcher.py`
+            
+            **Change default passwords after first boot!**
+            
+            See `INSTALLATION-GUIDE.md` for detailed instructions.
+            
+            Built from commit: ${{ github.sha }}
+          files: release-files/*
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, 'dev-') || contains(steps.version.outputs.version, 'beta') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build summary
+  summary:
+    needs: [build-rpi4-arm64, build-rpi4-arm32, build-rpi-zero2, build-ubuntu-arm64]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Generate version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-$(date +%Y%m%d)-${GITHUB_SHA:0:8}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Build Summary
+        run: |
+          echo "## SBC Images Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "- **rpi4-arm64:** ${{ needs.build-rpi4-arm64.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **rpi4-arm32:** ${{ needs.build-rpi4-arm32.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **rpi-zero2:** ${{ needs.build-rpi-zero2.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **ubuntu-arm64:** ${{ needs.build-ubuntu-arm64.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [[ "${{ github.event_name }}" == "push" && "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "🎉 **Automatic build triggered by version tag!**" >> $GITHUB_STEP_SUMMARY
+            echo "Images will be available in the GitHub Release." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Images are available as workflow artifacts." >> $GITHUB_STEP_SUMMARY
+          fi
