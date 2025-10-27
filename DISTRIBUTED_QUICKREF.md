@@ -1,20 +1,43 @@
 # Distributed Collatz - Quick Reference
 
-## 🚀 Quick Start (The Easy Way)
+## 🚀 ONE-COMMAND INSTALL
 
-**NEW: Just use the launcher menu!**
+### Windows (PowerShell):
+```powershell
+iwr -useb https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.ps1 | iex
+```
+
+### Linux / macOS:
+```bash
+curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
+```
+
+### Docker:
+```bash
+docker pull jaylouisw/collatz-network:latest
+docker run -it jaylouisw/collatz-network
+```
+
+### Raspberry Pi:
+Download pre-built image: [Releases](https://github.com/Jaylouisw/ProjectCollatz/releases)
+
+---
+
+## 🎯 Quick Start (After Install)
+
+**Just use the launcher menu:**
 
 ```bash
-# 1. Install IPFS
-# Download: https://docs.ipfs.tech/install/
-ipfs init
-ipfs daemon
+# Windows
+cd %USERPROFILE%\collatz-network
+.\start.ps1
 
-# 2. Install dependencies
-pip install -r requirements_distributed.txt
+# Linux/Mac
+cd ~/collatz-network
+./start.sh
 
-# 3. Run the launcher
-python launcher.py
+# Or directly
+python network_launcher.py
 ```
 
 The launcher gives you a simple menu to:
@@ -25,6 +48,29 @@ The launcher gives you a simple menu to:
 - Run diagnostics (option 10)
 
 **No need to remember commands!**
+
+**Note:** Only one launcher instance can run per machine.
+
+---
+
+## 📦 Manual Installation (If You Prefer)
+
+```bash
+# 1. Install IPFS
+# Download: https://docs.ipfs.tech/install/
+ipfs init
+ipfs daemon
+
+# 2. Clone repository
+git clone https://github.com/Jaylouisw/ProjectCollatz.git
+cd ProjectCollatz
+
+# 3. Install dependencies
+pip install -r requirements_distributed.txt
+
+# 4. Run the launcher
+python network_launcher.py
+```
 
 ---
 
@@ -209,8 +255,87 @@ for i, user in enumerate(leaders, 1):
 - **`user_accounts.json`** - User account database
 - **`collatz_config.json`** - Your local verification progress
 
-## 🔗 Full Documentation
+## � Docker Deployment
+
+### Single Container:
+```bash
+# Pull image
+docker pull jaylouisw/collatz-network:latest
+
+# Run worker node
+docker run -d --name collatz-worker \
+  -v collatz-ipfs:/home/collatz/.ipfs \
+  -v collatz-keys:/app/keys \
+  jaylouisw/collatz-network
+
+# Run with user account (mount your keys)
+docker run -d --name collatz-worker \
+  -v $PWD/keys:/app/keys:ro \
+  -v collatz-ipfs:/home/collatz/.ipfs \
+  jaylouisw/collatz-network \
+  python distributed_collatz.py --user-key /app/keys/user_alice_private.pem
+```
+
+### Multi-Node Testing (docker-compose):
+```bash
+# Start 3-node network for testing
+docker-compose up -d
+
+# View logs
+docker-compose logs -f worker1
+
+# Stop network
+docker-compose down
+```
+
+### Build Your Own Image:
+```bash
+docker build -t collatz-network .
+docker run -it collatz-network
+```
+
+## 🥧 Raspberry Pi
+
+### Pre-built Image:
+1. Download from [Releases](https://github.com/Jaylouisw/ProjectCollatz/releases)
+2. Write to SD card: `etcher` or `dd`
+3. Boot Pi - auto-starts on first boot!
+
+### Manual Install on Pi:
+```bash
+# Use the install script
+curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
+
+# Or build custom image
+./build-pi-image.sh
+```
+
+**Pi Features:**
+- Headless (no GUI) - perfect for clusters
+- Auto-starts on boot
+- SSH enabled by default
+- Tested on: Pi 3, Pi 4, Pi Zero 2 W
+
+## 🖥️ Platform Support
+
+**Tested & Supported:**
+- ✅ Windows 10/11 (x64)
+- ✅ Ubuntu 20.04/22.04/24.04 (x64, ARM64)
+- ✅ Debian 11/12 (x64, ARM64)
+- ✅ macOS 11+ (Intel & Apple Silicon)
+- ✅ Raspberry Pi OS (ARM64)
+- ✅ Docker (all platforms)
+
+**Requirements:**
+- Python 3.8 or later
+- 2GB RAM minimum (4GB+ recommended)
+- Internet connection
+- IPFS daemon
+
+## �🔗 Full Documentation
 
 - **[DISTRIBUTED.md](DISTRIBUTED.md)** - Complete distributed system architecture
 - **[USER_ACCOUNTS.md](USER_ACCOUNTS.md)** - User account system guide
 - **[ERROR_HANDLING.md](ERROR_HANDLING.md)** - Error handling and recovery
+- **[README.md](README.md)** - Project overview
+

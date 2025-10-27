@@ -5,12 +5,89 @@ COLLATZ DISTRIBUTED NETWORK - MAIN LAUNCHER
 
 Single entry point for all network operations.
 Just run: python network_launcher.py
+
+Only one instance can run per machine.
 '''
 
 import subprocess
 import sys
 import os
+import tempfile
 from typing import Optional
+
+# Platform-specific imports
+if os.name != 'nt':
+    import fcntl
+
+
+
+class SingleInstanceLock:
+    """Ensures only one instance of the launcher runs per machine."""
+    
+    def __init__(self, lock_name='collatz_launcher'):
+        self.lock_file = None
+        self.lock_name = lock_name
+        
+        # Use platform-appropriate lock location
+        if os.name == 'nt':
+            # Windows: use temp directory
+            lock_dir = tempfile.gettempdir()
+        else:
+            # Unix-like: try /var/lock first, fallback to temp
+            lock_dir = '/var/lock' if os.path.exists('/var/lock') else tempfile.gettempdir()
+        
+        self.lock_path = os.path.join(lock_dir, f'{lock_name}.lock')
+    
+    def acquire(self):
+        """Acquire the lock. Returns True if successful, False if another instance is running."""
+        try:
+            self.lock_file = open(self.lock_path, 'w')
+            
+            if os.name == 'nt':
+                # Windows: try to lock using msvcrt
+                import msvcrt
+                try:
+                    msvcrt.locking(self.lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+                    self.lock_file.write(str(os.getpid()))
+                    self.lock_file.flush()
+                    return True
+                except IOError:
+                    return False
+            else:
+                # Unix-like: use fcntl
+                try:
+                    fcntl.flock(self.lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    self.lock_file.write(str(os.getpid()))
+                    self.lock_file.flush()
+                    return True
+                except IOError:
+                    return False
+        except Exception as e:
+            print(f"Error acquiring lock: {e}")
+            return False
+    
+    def release(self):
+        """Release the lock."""
+        if self.lock_file:
+            try:
+                if os.name == 'nt':
+                    import msvcrt
+                    msvcrt.locking(self.lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    fcntl.flock(self.lock_file.fileno(), fcntl.LOCK_UN)
+                self.lock_file.close()
+                if os.path.exists(self.lock_path):
+                    os.remove(self.lock_path)
+            except:
+                pass
+    
+    def __enter__(self):
+        if not self.acquire():
+            raise RuntimeError("Another instance is already running")
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.release()
 
 
 class CollatzLauncher:
@@ -392,9 +469,31 @@ class CollatzLauncher:
 
 
 def main():
+    """Main entry point with single-instance lock."""
     try:
-        launcher = CollatzLauncher()
-        launcher.run()
+        # Acquire single-instance lock
+        with SingleInstanceLock('collatz_launcher'):
+            launcher = CollatzLauncher()
+            launcher.run()
+    except RuntimeError as e:
+        print("=" * 70)
+        print("    COLLATZ DISTRIBUTED VERIFICATION NETWORK")
+        print("=" * 70)
+        print()
+        print("ERROR: Another instance of the launcher is already running!")
+        print()
+        print("Only one launcher instance can run per machine.")
+        print("If you're sure no other instance is running, the lock file may be stale.")
+        print()
+        if os.name == 'nt':
+            lock_path = os.path.join(tempfile.gettempdir(), 'collatz_launcher.lock')
+        else:
+            lock_dir = '/var/lock' if os.path.exists('/var/lock') else tempfile.gettempdir()
+            lock_path = os.path.join(lock_dir, 'collatz_launcher.lock')
+        print(f"Lock file location: {lock_path}")
+        print("You can manually delete this file if needed.")
+        print()
+        sys.exit(1)
     except KeyboardInterrupt:
         print("\n\nLauncher interrupted by user. Goodbye!")
         sys.exit(0)

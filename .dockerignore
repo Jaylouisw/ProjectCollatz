@@ -1,0 +1,77 @@
+# Docker ignore file - exclude unnecessary files from image
+
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific
+keys/
+*.lock
+diagnostic_report.json
+error_log.json
+optimization_state.json
+autotuner_state.json
+gpu_tuning.json
+session_summary.txt
+tuning_log.txt
+realtime_stats.json
+
+# Benchmarks
+benchmarks/
+
+# Backup files
+launcher_old.py
+*.bak
+*.backup
+
+# Documentation (copied separately)
+# Keep only essential docs in image
+CONTRIBUTING.md
+KERNEL_OPTIMIZATION_NOTES.md
+ERROR_HANDLING.md
+PRODUCTION_PLAN.md
+REDDIT_POST.md
+USER_ACCOUNTS.md
+
+# Install scripts (not needed in container)
+install.sh
+install.ps1
+setup.py

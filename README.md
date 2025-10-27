@@ -1,8 +1,33 @@
 # Collatz Engine
 
-A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, featuring adaptive auto-tuning, hybrid CPU+GPU architecture, and CPU-only fallback mode.
+A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, featuring adaptive auto-tuning, hybrid CPU+GPU architecture, and **fully decentralized verification network**.
 
 📚 **New to this project?** Start with [QUICK_START.md](QUICK_START.md) | **All documentation:** [DOCUMENTATION.md](DOCUMENTATION.md)
+
+## 🚀 One-Command Install
+
+### Windows (PowerShell):
+```powershell
+iwr -useb https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.ps1 | iex
+```
+
+### Linux / macOS:
+```bash
+curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
+```
+
+### Docker:
+```bash
+docker pull jaylouisw/collatz-network:latest
+docker run -it jaylouisw/collatz-network
+```
+
+### Raspberry Pi:
+Download pre-built image from [Releases](https://github.com/Jaylouisw/ProjectCollatz/releases)
+
+**→ See [DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md) for complete installation guide!**
+
+---
 
 ## Features
 
@@ -19,13 +44,20 @@ A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, 
 - **Multi-stage optimization** - Binary search + fine-tuning + progressive refinement
 - **System diagnostics** - Built-in health checks and troubleshooting
 
-### Distributed Network (NEW!)
-- **🌐 Decentralized verification** via IPFS (no central server)
+### Distributed Network
+- **🌐 Fully decentralized** via IPFS (no central server, runs forever)
 - **🔐 Cryptographic proofs** with Ed25519 signatures (tamper-proof)
 - **👥 Multi-worker consensus** (3+ workers verify each range)
 - **⭐ Trust & reputation system** with automatic bad-actor detection
 - **🛡️ Byzantine fault tolerance** via redundant verification
 - **📊 Public verification records** stored permanently on IPFS
+- **🎉 Counterexample celebration** with automatic network-wide notification
+- **🗳️ Democratic voting** for network continuation decisions
+- **🏆 IPFS leaderboard** showing top contributors
+- **👤 User accounts** with persistent identity across nodes
+- **🔒 Random work assignment** prevents collusion attacks
+- **🐳 Docker support** for easy deployment
+- **🥧 Raspberry Pi support** with pre-built images
 
 **→ See [DISTRIBUTED.md](DISTRIBUTED.md) for full details on joining the distributed network!**
 
@@ -48,15 +80,47 @@ Current benchmarks on mid-range GPU (6GB VRAM):
 - Python 3.8+
 - No GPU required
 
-## Installation
+## Manual Installation
 
+### For Distributed Network:
 ```bash
-# For GPU mode - install CuPy
-pip install cupy-cuda12x  # or cupy-cuda11x for older CUDA versions
+# Install IPFS
+# Download from: https://docs.ipfs.tech/install/
 
 # Clone repository
-git clone <your-repo-url>
-cd CollatzEngine
+git clone https://github.com/Jaylouisw/ProjectCollatz.git
+cd ProjectCollatz
+
+# Install Python dependencies
+pip install -r requirements_distributed.txt
+
+# Start IPFS daemon
+ipfs init
+ipfs daemon &
+
+# Run the launcher
+python network_launcher.py
+```
+
+### For Local GPU Verification:
+```bash
+# Install CuPy (GPU acceleration)
+pip install cupy-cuda12x  # or cupy-cuda11x for older CUDA
+
+# Clone repository
+git clone https://github.com/Jaylouisw/ProjectCollatz.git
+cd ProjectCollatz
+
+# Run the engine
+python launcher.py
+```
+
+### For CPU-Only Mode:
+```bash
+# No additional dependencies needed!
+git clone https://github.com/Jaylouisw/ProjectCollatz.git
+cd ProjectCollatz
+python CollatzEngine.py cpu
 ```
 
 **First-time users:** See [QUICK_START.md](QUICK_START.md) for step-by-step instructions.
@@ -65,6 +129,22 @@ cd CollatzEngine
 ```bash
 python run_diagnostics.py  # Verify your system is ready
 ```
+
+## Platform Support
+
+**Tested & Working:**
+- ✅ Windows 10/11 (x64)
+- ✅ Ubuntu 20.04/22.04/24.04 (x64, ARM64)
+- ✅ Debian 11/12 (x64, ARM64)
+- ✅ macOS 11+ (Intel & Apple Silicon)
+- ✅ Raspberry Pi OS (ARM64)
+- ✅ Docker (all platforms)
+
+**Requirements:**
+- Python 3.8+
+- 2GB RAM minimum (4GB+ recommended)
+- For distributed network: IPFS daemon
+- For GPU mode: CUDA-capable GPU
 
 ## Usage
 

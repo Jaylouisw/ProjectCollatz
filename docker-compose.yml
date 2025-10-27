@@ -1,0 +1,108 @@
+# Docker Compose for Collatz Distributed Network
+# Run multi-node network for testing
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # Coordinator node (generates work, manages network)
+  coordinator:
+    build: .
+    image: collatz-network:latest
+    container_name: collatz-coordinator
+    hostname: coordinator
+    volumes:
+      - coordinator-data:/home/collatz/.ipfs
+      - coordinator-keys:/app/keys
+      - shared-network:/app/network-data
+    ports:
+      - "4001:4001"  # IPFS swarm
+      - "5001:5001"  # IPFS API
+      - "8080:8080"  # IPFS Gateway
+    environment:
+      - NODE_TYPE=coordinator
+      - COLLATZ_NODE_NAME=coordinator
+    command: python distributed_collatz.py --generate-work 100
+    networks:
+      - collatz-net
+    restart: unless-stopped
+
+  # Worker node 1
+  worker1:
+    build: .
+    image: collatz-network:latest
+    container_name: collatz-worker1
+    hostname: worker1
+    volumes:
+      - worker1-data:/home/collatz/.ipfs
+      - worker1-keys:/app/keys
+      - shared-network:/app/network-data
+    environment:
+      - NODE_TYPE=worker
+      - COLLATZ_NODE_NAME=worker1
+    command: python distributed_collatz.py --cpu-only
+    depends_on:
+      - coordinator
+    networks:
+      - collatz-net
+    restart: unless-stopped
+
+  # Worker node 2
+  worker2:
+    build: .
+    image: collatz-network:latest
+    container_name: collatz-worker2
+    hostname: worker2
+    volumes:
+      - worker2-data:/home/collatz/.ipfs
+      - worker2-keys:/app/keys
+      - shared-network:/app/network-data
+    environment:
+      - NODE_TYPE=worker
+      - COLLATZ_NODE_NAME=worker2
+    command: python distributed_collatz.py --cpu-only
+    depends_on:
+      - coordinator
+    networks:
+      - collatz-net
+    restart: unless-stopped
+
+  # Worker node 3
+  worker3:
+    build: .
+    image: collatz-network:latest
+    container_name: collatz-worker3
+    hostname: worker3
+    volumes:
+      - worker3-data:/home/collatz/.ipfs
+      - worker3-keys:/app/keys
+      - shared-network:/app/network-data
+    environment:
+      - NODE_TYPE=worker
+      - COLLATZ_NODE_NAME=worker3
+    command: python distributed_collatz.py --cpu-only
+    depends_on:
+      - coordinator
+    networks:
+      - collatz-net
+    restart: unless-stopped
+
+# Named volumes for persistence
+volumes:
+  coordinator-data:
+  coordinator-keys:
+  worker1-data:
+  worker1-keys:
+  worker2-data:
+  worker2-keys:
+  worker3-data:
+  worker3-keys:
+  shared-network:
+
+# Network for inter-node communication
+networks:
+  collatz-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
