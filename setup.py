@@ -20,8 +20,8 @@ setup(
     description='Distributed verification network for the Collatz Conjecture',
     long_description=read_file('README.md'),
     long_description_content_type='text/markdown',
-    author='Jay',
-    author_email='',
+    author='Jaylouisw',
+    author_email='wenden.jason@gmail.com',
     url='https://github.com/Jaylouisw/ProjectCollatz',
     
     # Package discovery
@@ -45,7 +45,7 @@ setup(
     
     # Core dependencies (always needed)
     install_requires=[
-        'ipfshttpclient>=0.8.0',
+        'ipfshttpclient>=0.8.0a2',
         'cryptography>=41.0.0',
         'psutil>=5.9.0',
         'numpy>=1.24.0',
