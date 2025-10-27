@@ -347,9 +347,14 @@ class DistributedCollatzWorker:
                 except Exception as e:
                     print(f"[WORKER] ⚠️ Failed to update user contributions: {e}")
             
-            # Check if range is complete and update global highest
+            # Check if range is complete and submit progress claim with consensus
             if consensus_reached and all_converged:
-                self.coordinator.update_global_highest(assignment.range_end)
+                self.coordinator.submit_progress_claim(
+                    worker_id=self.worker_id,
+                    user_id=self.user_id,
+                    new_highest=assignment.range_end,
+                    proof_cid=proof_cid  # proof_cid is available from earlier in the method
+                )
             
             return True
             

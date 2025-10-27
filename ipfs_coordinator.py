@@ -22,6 +22,7 @@ import random
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from dataclasses import dataclass, asdict
+from trust_system import TrustSystem
 
 try:
     import ipfshttpclient
@@ -93,6 +94,9 @@ class IPFSCoordinator:
         
         self.client = ipfshttpclient.connect(ipfs_api)
         self.node_id = self.client.id()['ID']
+        
+        # 🔒 SECURITY: Trust system for consensus validation
+        self.trust_system = TrustSystem()
         
         # Local state (synced via gossip)
         self.work_assignments: Dict[str, WorkAssignment] = {}
@@ -314,11 +318,16 @@ class IPFSCoordinator:
                 if proof.proof_id not in self.verification_proofs:
                     self.verification_proofs[proof.proof_id] = proof
             
-            # Take maximum highest_proven
+            # Validate and merge highest_proven with security checks
             peer_highest = peer_state.get('global_highest_proven', 0)
             if peer_highest > self.global_highest_proven:
-                self.global_highest_proven = peer_highest
-                print(f"[IPFS] ⬆️ Updated global highest: {self.global_highest_proven:,}")
+                # 🔒 SECURITY: Validate peer progress claim
+                if self._validate_peer_progress_claim(peer_highest):
+                    self.global_highest_proven = peer_highest
+                    print(f"[IPFS] ✅ Validated peer progress update: {self.global_highest_proven:,}")
+                else:
+                    print(f"[IPFS] 🚫 SECURITY: Rejected invalid peer progress claim: {peer_highest:,}")
+                    print(f"[IPFS] Current valid progress: {self.global_highest_proven:,}")
         
         except Exception as e:
             print(f"[IPFS] Error merging peer state: {e}")
@@ -385,8 +394,21 @@ class IPFSCoordinator:
         return assignments
     
     def create_work_assignment_internal(self, range_start: int, range_end: int, 
-                                       priority: int = 1) -> WorkAssignment:
-        """Create a new work assignment (internal method)."""
+                                       priority: int = 1, creator_user_id: Optional[str] = None) -> Optional[WorkAssignment]:
+        """
+        🔒 SECURE: Create a new work assignment with trust-level validation.
+        Returns None if user is not authorized to create assignments.
+        """
+        assignment_size = range_end - range_start
+        
+        # 🔒 TRUST RESTRICTIONS: Validate user authorization for work assignments
+        if creator_user_id:
+            can_create, create_message = self.trust_system.can_user_create_work_assignments(creator_user_id, assignment_size)
+            if not can_create:
+                print(f"[IPFS] 🚫 TRUST: {create_message}")
+                return None
+            print(f"[IPFS] ✅ TRUST: {create_message}")
+        
         assignment = WorkAssignment(
             assignment_id=self.generate_assignment_id(range_start, range_end),
             range_start=range_start,
@@ -397,7 +419,8 @@ class IPFSCoordinator:
             status='available',
             created_at=time.time(),
             timeout_at=time.time() + self.WORK_TIMEOUT_SECONDS,
-            priority=priority
+            priority=priority,
+            creator_user_id=creator_user_id  # Track who created this assignment
         )
         
         self.work_assignments[assignment.assignment_id] = assignment
@@ -711,14 +734,191 @@ class IPFSCoordinator:
             self.save_state_to_ipns()
     
     
-    def update_global_highest(self, new_highest: int):
-        """Update the global highest proven value (decentralized)."""
-        if new_highest > self.global_highest_proven:
-            self.global_highest_proven = new_highest
-            print(f"[IPFS] 🎉 New global highest proven: {new_highest:,}")
+    def _validate_peer_progress_claim(self, claimed_progress: int) -> bool:
+        """
+        🔒 SECURITY: Validate a peer's progress claim to prevent malicious updates.
+        
+        Args:
+            claimed_progress: The progress value claimed by a peer
             
-            # Publish immediately for milestone updates (any node can publish!)
+        Returns:
+            bool: True if claim is valid, False if potentially malicious
+        """
+        # Rule 1: Prevent massive backwards jumps (could be malicious reset)
+        if claimed_progress < self.global_highest_proven * 0.99:  # Allow 1% variance for network lag
+            print(f"[SECURITY] Rejected backwards progress: {claimed_progress:,} < {self.global_highest_proven:,}")
+            return False
+        
+        # Rule 2: Prevent impossible forward jumps (unrealistic progress)
+        max_reasonable_jump = self.global_highest_proven + (self.RANGE_SIZE * 100)  # Max 100 ranges ahead
+        if claimed_progress > max_reasonable_jump:
+            print(f"[SECURITY] Rejected excessive progress jump: {claimed_progress:,} > {max_reasonable_jump:,}")
+            return False
+        
+        # Rule 3: Validate against completed work (if we have local state)
+        if self._has_sufficient_completed_work_for_progress(claimed_progress):
+            return True
+        
+        # Rule 4: Allow small incremental progress (normal network operation)
+        reasonable_increment = self.global_highest_proven + (self.RANGE_SIZE * 10)  # Max 10 ranges
+        if claimed_progress <= reasonable_increment:
+            return True
+        
+        print(f"[SECURITY] Rejected unvalidated large progress jump: {claimed_progress:,}")
+        return False
+    
+    def _has_sufficient_completed_work_for_progress(self, progress: int) -> bool:
+        """
+        🔒 ENHANCED SECURITY: Comprehensive incremental progress validation.
+        Ensures progress claims are backed by sufficient verified work.
+        """
+        current_highest = self.global_highest_proven
+        
+        # Rule 1: Check if we have continuous coverage from current highest to claimed progress
+        if not self._validate_continuous_coverage(current_highest, progress):
+            print(f"[SECURITY] Gap in verification coverage between {current_highest:,} and {progress:,}")
+            return False
+        
+        # Rule 2: Count verified ranges in the claimed progress area
+        verified_ranges = [assignment for assignment in self.work_assignments.values() 
+                          if (assignment.status == 'completed' and 
+                              assignment.range_start >= current_highest and 
+                              assignment.range_end <= progress)]
+        
+        if not verified_ranges:
+            print(f"[SECURITY] No verified ranges found between {current_highest:,} and {progress:,}")
+            return False
+        
+        # Rule 3: Check redundancy - ensure sufficient verification diversity
+        for assignment in verified_ranges:
+            if len(assignment.completed_workers) < 2:  # Minimum 2 workers must verify each range
+                print(f"[SECURITY] Insufficient verification redundancy for range {assignment.range_start:,}-{assignment.range_end:,}")
+                return False
+        
+        # Rule 4: Estimate coverage quality
+        total_coverage = sum(assignment.range_end - assignment.range_start for assignment in verified_ranges)
+        expected_coverage = progress - current_highest
+        coverage_ratio = total_coverage / expected_coverage if expected_coverage > 0 else 0
+        
+        if coverage_ratio < 0.95:  # Require 95% coverage minimum
+            print(f"[SECURITY] Insufficient coverage ratio: {coverage_ratio:.2%} < 95%")
+            return False
+        
+        # Rule 5: Check verification timestamps to prevent backdating attacks
+        recent_cutoff = time.time() - 3600  # 1 hour ago
+        recent_verifications = sum(1 for assignment in verified_ranges 
+                                 if any(proof.timestamp > recent_cutoff 
+                                       for proof in self.verification_proofs.values() 
+                                       if proof.assignment_id == assignment.assignment_id))
+        
+        if recent_verifications == 0 and len(verified_ranges) > 0:
+            print(f"[SECURITY] No recent verifications found - possible replay attack")
+            return False
+        
+        print(f"[SECURITY] ✅ Progress validation passed: {len(verified_ranges)} ranges, {coverage_ratio:.1%} coverage")
+        return True
+
+    def _validate_continuous_coverage(self, start: int, end: int) -> bool:
+        """
+        🔒 SECURITY: Validate that there's continuous verification coverage.
+        Prevents gaps that could hide fake progress claims.
+        """
+        if start >= end:
+            return True
+        
+        # Get all completed assignments in the range, sorted by start
+        relevant_assignments = sorted(
+            [assignment for assignment in self.work_assignments.values() 
+             if (assignment.status == 'completed' and 
+                 assignment.range_start >= start and 
+                 assignment.range_end <= end)],
+            key=lambda x: x.range_start
+        )
+        
+        if not relevant_assignments:
+            return False
+        
+        # Check for gaps in coverage
+        current_position = start
+        for assignment in relevant_assignments:
+            if assignment.range_start > current_position:
+                # Found a gap
+                gap_size = assignment.range_start - current_position
+                if gap_size > self.RANGE_SIZE * 0.1:  # Allow small gaps (10% of range size)
+                    return False
+            current_position = max(current_position, assignment.range_end)
+        
+        # Check if we reached the end
+        return current_position >= end
+
+    def submit_progress_claim(self, worker_id: str, user_id: str, new_highest: int, proof_cid: str) -> bool:
+        """
+        🔒 SECURE: Submit a progress claim that requires consensus validation.
+        Replaces direct progress updates with a consensus mechanism.
+        """
+        if new_highest <= self.global_highest_proven:
+            print(f"[IPFS] Progress claim {new_highest:,} not higher than current {self.global_highest_proven:,}")
+            return False
+        
+        # 🔒 TRUST RESTRICTIONS: Check if user is authorized to make progress claims
+        can_claim, claim_message = self.trust_system.can_user_make_progress_claims(user_id)
+        if not can_claim:
+            print(f"[IPFS] 🚫 TRUST: {claim_message}")
+            return False
+        
+        # 🔒 SECURITY: Validate the claim first
+        if not self._validate_progress_update(new_highest):
+            print(f"[IPFS] 🚫 SECURITY: Rejected invalid progress claim: {new_highest:,}")
+            return False
+        
+        # Submit to trust system for consensus
+        consensus_reached, message = self.trust_system.submit_progress_claim(
+            worker_id, user_id, new_highest, proof_cid
+        )
+        
+        print(f"[IPFS] {message}")
+        
+        if consensus_reached:
+            # 🔒 BYZANTINE SECURITY: Check for attacks before accepting consensus
+            attack_indicators = self.trust_system.detect_byzantine_attacks()
+            if attack_indicators['risk_level'] in ['HIGH', 'CRITICAL']:
+                self.trust_system.apply_byzantine_countermeasures(attack_indicators)
+                print(f"[IPFS] 🛡️ Applied Byzantine countermeasures, risk level: {attack_indicators['risk_level']}")
+            
+            # Update global progress only after consensus and security checks
+            self.global_highest_proven = new_highest
+            print(f"[IPFS] 🎉 CONSENSUS CONFIRMED: New global highest: {new_highest:,}")
+            
+            # Publish immediately for milestone updates
             self.publish_state_to_network()
+            return True
+        
+        return False
+
+    def update_global_highest(self, new_highest: int):
+        """
+        🔒 DEPRECATED: Direct progress updates are now disabled for security.
+        Use submit_progress_claim() with consensus validation instead.
+        """
+        print(f"[IPFS] 🚫 SECURITY: Direct progress updates disabled. Use consensus-based claims.")
+        print(f"[IPFS] 💡 Use submit_progress_claim(worker_id, user_id, {new_highest}, proof_cid) instead")
+
+    def _validate_progress_update(self, new_progress: int) -> bool:
+        """
+        🔒 SECURITY: Validate a progress update for security.
+        This is called when our own workers complete verification.
+        """
+        # Rule 1: Only allow reasonable incremental progress
+        if new_progress > self.global_highest_proven + (self.RANGE_SIZE * 2):
+            print(f"[SECURITY] Progress update too large: {new_progress:,} vs {self.global_highest_proven:,}")
+            return False
+        
+        # Rule 2: Must be based on completed verified work
+        if not self._has_sufficient_completed_work_for_progress(new_progress):
+            print(f"[SECURITY] Insufficient completed work for progress: {new_progress:,}")
+            return False
+        
+        return True
     
     def get_network_statistics(self) -> Dict:
         """Get statistics about the distributed network."""

@@ -40,29 +40,53 @@ setup(
         'error_handler',
     ],
     
-    # Python version requirement
-    python_requires='>=3.8',
+    # Python version requirement - FUTURE-PROOFED for wide compatibility
+    python_requires='>=3.8,<4.0',  # Support current and future 3.x, prepare for 4.x
     
-    # Core dependencies (always needed)
+    # Core dependencies (FUTURE-PROOFED with version ranges)
     install_requires=[
-        'ipfshttpclient>=0.8.0a2',
-        'cryptography>=41.0.0',
-        'psutil>=5.9.0',
-        'numpy>=1.24.0',
+        # IPFS: Allow patch updates while avoiding breaking changes
+        'ipfshttpclient>=0.8.0,<0.10.0',  # Moved from alpha to stable range
+        
+        # Cryptography: Wide range for security updates, quantum-safe future
+        'cryptography>=41.0.0,<50.0.0',  # Allow major security updates
+        
+        # System monitoring: Stable API, wide compatibility
+        'psutil>=5.9.0,<7.0.0',  # psutil has stable API
+        
+        # NumPy: Conservative range to avoid breaking changes
+        'numpy>=1.24.0,<2.1.0',  # Support NumPy 2.x but test first
     ],
     
-    # Optional dependencies
+    # Optional dependencies - FUTURE-PROOFED with flexible GPU support
     extras_require={
+        # GPU support with multiple backend options
         'gpu': [
-            'cupy-cuda12x>=12.0.0',  # CUDA 12.x
+            'cupy-cuda12x>=12.0.0,<15.0.0',  # CUDA 12.x with future versions
         ],
         'gpu-cuda11': [
-            'cupy-cuda11x>=11.0.0',  # CUDA 11.x
+            'cupy-cuda11x>=11.0.0,<13.0.0',  # CUDA 11.x legacy support
         ],
+        'gpu-rocm': [
+            'cupy-rocm-5-0>=12.0.0,<15.0.0',  # AMD ROCm support
+        ],
+        'gpu-intel': [
+            # Future: Intel GPU support when available
+            # 'intel-extension-for-pytorch>=2.0.0',
+        ],
+        
+        # Development tools with version ranges
         'dev': [
-            'pytest>=7.0.0',
-            'black>=23.0.0',
-            'flake8>=6.0.0',
+            'pytest>=7.0.0,<9.0.0',
+            'black>=23.0.0,<25.0.0',
+            'flake8>=6.0.0,<8.0.0',
+            'mypy>=1.0.0,<2.0.0',  # Type checking
+        ],
+        
+        # Alternative networking backends (future-proofing)
+        'networking-alt': [
+            'libp2p>=0.1.0,<1.0.0',  # Alternative P2P protocol
+            # 'bittorrent-protocol>=1.0.0',  # Future alternative
         ],
     },
     
