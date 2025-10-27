@@ -144,7 +144,7 @@ class CollatzLauncher:
             print("No keys directory found. Create an account first (option 4).")
             return []
         
-        key_files = [f for f in os.listdir(keys_dir) if f.endswith("_private.pem")]
+        key_files = [f for f in os.listdir(keys_dir) if f.endswith("_private_key.pem")]
         
         if not key_files:
             print("No user accounts found. Create one first (option 4).")
@@ -152,7 +152,7 @@ class CollatzLauncher:
         
         print("\nAvailable accounts:")
         for i, key_file in enumerate(key_files, 1):
-            username = key_file.replace("user_", "").replace("_private.pem", "")
+            username = key_file.replace("_private_key.pem", "")
             print(f"  {i}. {username}")
         print()
         
