@@ -1,8 +1,10 @@
-# Collatz Engine
+# Collatz Distributed Network
 
-A highly optimized GPU-accelerated engine for exploring the Collatz Conjecture, featuring adaptive auto-tuning, hybrid CPU+GPU architecture, and **fully decentralized verification network**.
+**Join the global effort to solve the Collatz Conjecture!**
 
-📚 **New to this project?** Start with [QUICK_START.md](QUICK_START.md) | **All documentation:** [DOCUMENTATION.md](DOCUMENTATION.md)
+A fully decentralized verification network powered by IPFS, with cryptographic proofs, Byzantine fault tolerance, and permanent public records. Contribute computing power from anywhere and help explore one of mathematics' greatest unsolved problems.
+
+📚 **Get Started:** [DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md) | **Full Documentation:** [DISTRIBUTED.md](DISTRIBUTED.md) | **Deployment:** [DEPLOYMENT.md](DEPLOYMENT.md)
 
 ## 🚀 One-Command Install
 
@@ -31,58 +33,125 @@ Download pre-built image from [Releases](https://github.com/Jaylouisw/ProjectCol
 
 ## Features
 
-### Local Verification
-- **Multi-GPU support** - Automatically detects and uses all available GPUs in parallel
-- **Hybrid CPU+GPU architecture** - Maximizes throughput using CuPy for CUDA acceleration
-- **CPU-only mode** - Runs on systems without GPU (automatic fallback)
-- **Adaptive auto-tuner** - Dynamically optimizes GPU and CPU parameters for peak performance
-- **Heterogeneous GPU support** - Works with different GPU models simultaneously
-- **Comprehensive error handling** - Catches hardware issues, missing libraries, driver problems
-- **Efficient odd-only checking** - Skips even numbers (trivial cases)
-- **Persistent state** - Resume capability with checkpoint system
-- **Real-time monitoring** - Split-screen display for checker and tuner
-- **Multi-stage optimization** - Binary search + fine-tuning + progressive refinement
-- **System diagnostics** - Built-in health checks and troubleshooting
+**🌐 Fully Decentralized Network**
+- No central server - runs forever via IPFS peer-to-peer gossip
+- Network continues with n>0 active nodes
+- Self-organizing work generation
+- Permanent public verification records
 
-### Distributed Network
-- **🌐 Fully decentralized** via IPFS (no central server, runs forever)
-- **🔐 Cryptographic proofs** with Ed25519 signatures (tamper-proof)
-- **👥 Multi-worker consensus** (3+ workers verify each range)
-- **⭐ Trust & reputation system** with automatic bad-actor detection
-- **🛡️ Byzantine fault tolerance** via redundant verification
-- **📊 Public verification records** stored permanently on IPFS
-- **🎉 Counterexample celebration** with automatic network-wide notification
-- **🗳️ Democratic voting** for network continuation decisions
-- **🏆 IPFS leaderboard** showing top contributors
-- **👤 User accounts** with persistent identity across nodes
-- **🔒 Random work assignment** prevents collusion attacks
-- **🐳 Docker support** for easy deployment
-- **🥧 Raspberry Pi support** with pre-built images
+**🔐 Cryptographic Security**
+- Ed25519 signatures prevent tampering
+- 3+ worker consensus required
+- Random work assignment prevents collusion
+- Trust & reputation system with automatic bad-actor detection
 
-**→ See [DISTRIBUTED.md](DISTRIBUTED.md) for full details on joining the distributed network!**
+**🎉 Community Features**
+- User accounts with persistent identity
+- Global leaderboard on IPFS
+- Counterexample celebration with network voting
+- Credit system for contributors
+- Raspberry Pi and Docker support
 
-## Performance
+**⚡ High Performance**
+- GPU acceleration (optional)
+- Multi-node horizontal scaling
+- CPU-only mode available
+- ~10 billion numbers/sec per GPU node
 
-Current benchmarks on mid-range GPU (6GB VRAM):
-- **~10 billion odd/s** (~20 billion effective/s)
-- **572+ trillion numbers** tested over continuous runtime
-- Auto-tuner adapts to any CUDA-capable GPU or CPU-only system
+**→ See [DISTRIBUTED.md](DISTRIBUTED.md) for complete architecture details!**
 
-## Requirements
+---
 
-### GPU Mode (Recommended)
-- One or more CUDA-capable GPUs with recent drivers
+## Quick Start
+
+### 1. Install (Choose One Method)
+
+**Windows:**
+```powershell
+iwr -useb https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.ps1 | iex
+```
+
+**Linux / macOS:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
+```
+
+**Docker:**
+```bash
+docker pull jaylouisw/collatz-network:latest
+docker run -it jaylouisw/collatz-network
+```
+
+**Raspberry Pi:**
+Download pre-built image from [Releases](https://github.com/Jaylouisw/ProjectCollatz/releases)
+
+### 2. Create User Account
+
+```bash
+python network_launcher.py
+# Choose option 4: Create User Account
+```
+
+Your account gives you:
+- ✅ Persistent identity across all your nodes
+- ✅ Recognition on the global leaderboard
+- ✅ Credit if you find a counterexample!
+
+### 3. Start Contributing
+
+```bash
+python network_launcher.py
+# Choose option 1: Start Worker Node (with account)
+```
+
+Your node will:
+- Connect to the global IPFS network
+- Get randomly assigned verification work
+- Build trust/reputation over time
+- Contribute to mathematical history!
+
+**That's it!** Your node is now part of the distributed verification network.
+
+---
+
+## Platform Support
+
+**Tested & Working:**
+- ✅ Windows 10/11 (x64)
+- ✅ Ubuntu 20.04/22.04/24.04 (x64, ARM64)
+- ✅ Debian 11/12 (x64, ARM64)
+- ✅ macOS 11+ (Intel & Apple Silicon)
+- ✅ Raspberry Pi OS (ARM64)
+- ✅ Docker (all platforms)
+
+**Requirements:**
 - Python 3.8+
-- CuPy (CUDA acceleration library)
-- **Multi-GPU**: Automatically detected and utilized (scales linearly)
+- 2GB RAM minimum (4GB+ recommended)
+- IPFS daemon (auto-installed by install scripts)
+- Internet connection
 
-### CPU Mode (Fallback)
-- Python 3.8+
-- No GPU required
+**Optional:**
+- CUDA-capable GPU for 10x-100x speedup
+- Multiple machines for distributed setup
 
-## Manual Installation
+---
 
-### For Distributed Network:
+## Documentation
+
+- **[DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md)** - Quick reference guide
+- **[DISTRIBUTED.md](DISTRIBUTED.md)** - Complete network architecture
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment guide
+- **[USER_ACCOUNTS.md](USER_ACCOUNTS.md)** - User account system
+- **[ERROR_HANDLING.md](ERROR_HANDLING.md)** - Troubleshooting
+
+---
+
+## Advanced Topics
+
+### Manual Installation
+
+If you prefer not to use the install scripts:
+
 ```bash
 # Install IPFS
 # Download from: https://docs.ipfs.tech/install/
@@ -102,22 +171,219 @@ ipfs daemon &
 python network_launcher.py
 ```
 
-### For Local GPU Verification:
+### Multi-Node Setup
+
+Run multiple worker nodes under one account:
+
 ```bash
-# Install CuPy (GPU acceleration)
-pip install cupy-cuda12x  # or cupy-cuda11x for older CUDA
+# Terminal 1
+python distributed_collatz.py --user-key ./keys/user_alice_private.pem --name node1
 
-# Clone repository
-git clone https://github.com/Jaylouisw/ProjectCollatz.git
-cd ProjectCollatz
+# Terminal 2  
+python distributed_collatz.py --user-key ./keys/user_alice_private.pem --name node2
 
-# Run the engine
-python launcher.py
+# Terminal 3
+python distributed_collatz.py --user-key ./keys/user_alice_private.pem --name node3
 ```
 
-### For CPU-Only Mode:
+All nodes contribute to your total statistics!
+
+### GPU Acceleration
+
+For 10x-100x speedup, install GPU support:
+
 ```bash
-# No additional dependencies needed!
+# CUDA 12.x
+pip install cupy-cuda12x
+
+# CUDA 11.x
+pip install cupy-cuda11x
+```
+
+Then start workers normally - GPU will be auto-detected and used.
+
+### Docker Deployment
+
+```bash
+# Single node
+docker run -d --name collatz-worker \
+  -v collatz-ipfs:/home/collatz/.ipfs \
+  -v $PWD/keys:/app/keys:ro \
+  jaylouisw/collatz-network \
+  python distributed_collatz.py --user-key /app/keys/user_alice_private.pem
+
+# Multi-node network
+docker-compose up -d
+```
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete Docker guide.
+
+---
+
+## Local-Only Mode (Not Recommended)
+
+<details>
+<summary>Click to expand - For running verification locally without the distributed network</summary>
+
+### Why local-only mode is not recommended:
+
+- ❌ No verification by other nodes (single point of failure)
+- ❌ No permanent public record
+- ❌ No credit if you find something
+- ❌ No contribution to global progress
+- ❌ Results aren't shared with the community
+
+### If you still want to run local-only:
+
+**For local GPU verification:**
+```bash
+pip install cupy-cuda12x  # GPU support
+git clone https://github.com/Jaylouisw/ProjectCollatz.git
+cd ProjectCollatz
+python launcher.py  # Old launcher, GPU optimization only
+```
+
+**For CPU-only verification:**
+```bash
+git clone https://github.com/Jaylouisw/ProjectCollatz.git
+cd ProjectCollatz
+python CollatzEngine.py cpu
+```
+
+See [QUICK_START.md](QUICK_START.md) for local-only mode details.
+
+**We strongly recommend using the distributed network instead!**
+
+</details>
+
+---
+
+## How It Works
+
+### The Collatz Conjecture
+
+Take any positive integer:
+- If even: divide by 2
+- If odd: multiply by 3 and add 1
+- Repeat until you reach 1
+
+**The conjecture:** Every number eventually reaches 1.
+
+**Status:** Unproven! Verified up to 2^68 by previous efforts.
+
+**Our goal:** Extend verification further AND create permanent, trustworthy records.
+
+### The Distributed Network
+
+1. **Work Generation:** Network automatically generates verification tasks
+2. **Random Assignment:** Workers randomly selected to prevent collusion
+3. **Verification:** Each range verified by 3+ independent workers
+4. **Consensus:** Results must agree (Byzantine fault tolerance)
+5. **Publication:** Cryptographically signed results stored permanently on IPFS
+6. **Trust Building:** Workers build reputation through consistent correct results
+
+If a counterexample is found:
+1. 🎉 Network-wide celebration with full credit to finder
+2. 🗳️ Democratic vote on whether to continue
+3. 📜 Permanent record of the discovery on IPFS
+
+### Why IPFS?
+
+- **Decentralized:** No single point of failure
+- **Permanent:** Content-addressed storage lasts forever
+- **Tamper-proof:** Cryptographic hashing prevents alterations
+- **Global:** Anyone can verify results independently
+
+---
+
+## Contributing
+
+Ways to contribute:
+
+1. **Run a worker node** - Add computing power to the network
+2. **Run multiple nodes** - Scale horizontally for more impact
+3. **Report issues** - Help improve the system
+4. **Share the project** - Grow the network
+5. **Code contributions** - Submit PRs for improvements
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
+## Performance Benchmarks
+
+**Per-Node Performance:**
+- CPU-only: ~100-500 million numbers/sec (varies by CPU)
+- Single GPU: ~10 billion numbers/sec (mid-range GPU)
+- Multi-GPU: Scales linearly
+
+**Network Performance:**
+- 10 nodes: ~100+ billion numbers/sec
+- 100 nodes: ~1+ trillion numbers/sec
+- Scales indefinitely with more participants!
+
+**Current Progress:**
+- Check network statistics: `python network_launcher.py` → option 9
+- View leaderboard: `python user_account.py leaderboard`
+
+---
+
+## FAQ
+
+**Q: Do I need a powerful computer?**
+A: No! CPU-only mode works fine. Any contribution helps.
+
+**Q: How much internet bandwidth does this use?**
+A: Very little. IPFS gossip is efficient, typically <1 MB/hour.
+
+**Q: Can I run this on a Raspberry Pi?**
+A: Yes! We provide pre-built Pi images. Perfect for 24/7 operation.
+
+**Q: What if I find a counterexample?**
+A: 🎉 You'll be credited! The network celebrates and votes on continuation.
+
+**Q: Is this safe to run?**
+A: Yes. Open source, no data collection, no crypto mining. Just math!
+
+**Q: How do I know my contribution matters?**
+A: Check your statistics and the leaderboard. Every number counts!
+
+**Q: Can I stop and restart anytime?**
+A: Yes! Your progress and reputation persist across sessions.
+
+---
+
+## License
+
+This project is licensed under CC BY-NC-SA 4.0 (Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International).
+
+**You are free to:**
+- Share and adapt the work
+- Run the distributed network
+- Modify for personal/educational use
+
+**Under these terms:**
+- Attribution required
+- Non-commercial use only
+- Share-alike (derivatives under same license)
+
+See [LICENSE](LICENSE) for full details.
+
+---
+
+## Support
+
+- **Documentation:** [DISTRIBUTED.md](DISTRIBUTED.md)
+- **Quick Start:** [DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md)
+- **Deployment:** [DEPLOYMENT.md](DEPLOYMENT.md)
+- **Issues:** https://github.com/Jaylouisw/ProjectCollatz/issues
+- **Diagnostics:** `python run_diagnostics.py`
+
+---
+
+**Ready to contribute?** Install now and join the global verification network! 🚀
+
+---
 git clone https://github.com/Jaylouisw/ProjectCollatz.git
 cd ProjectCollatz
 python CollatzEngine.py cpu

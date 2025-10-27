@@ -1,6 +1,46 @@
 # Quick Start Guide
 
-## For First-Time Users
+## ⚠️ NOTICE: This guide is for LOCAL-ONLY verification (not recommended)
+
+**For the distributed network (recommended), see:**
+- **[DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md)** - Quick start for distributed network
+- **[README.md](README.md)** - Main project documentation
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment
+
+---
+
+## Why You Should Use the Distributed Network Instead
+
+**Distributed Network Benefits:**
+- ✅ Your work is verified by others (Byzantine fault tolerance)
+- ✅ Permanent public record on IPFS
+- ✅ Credit and recognition if you find something
+- ✅ Contribute to global progress
+- ✅ Join a community of contributors
+- ✅ Build reputation and trust
+
+**Local-Only Mode Drawbacks:**
+- ❌ No verification by others (could miss bugs)
+- ❌ Results not shared publicly
+- ❌ No credit system
+- ❌ Work in isolation
+- ❌ Single point of failure
+
+**Install the distributed network instead:**
+```bash
+# One command:
+curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
+# or see DISTRIBUTED_QUICKREF.md for Windows/Docker/Pi
+```
+
+---
+
+## Local-Only Mode (GPU Optimization)
+
+<details>
+<summary>Click to expand - Only if you specifically need local verification</summary>
+
+### For First-Time Users
 
 ### 1. Check System Requirements
 
@@ -39,7 +79,7 @@ pip install cupy-cuda12x  # or cupy-cuda11x for older CUDA
 ### 3. Run the Launcher
 
 ```bash
-python launcher.py
+python launcher.py  # Note: OLD launcher, not network_launcher.py
 ```
 
 **What happens:**
@@ -294,3 +334,32 @@ Once you're running:
 - Try different hardware if available
 
 **Most important:** Have fun exploring the Collatz Conjecture! 🚀
+
+</details>
+
+---
+
+## Seriously, Use the Distributed Network!
+
+The distributed network gives you:
+- ✅ **Verification** - Your results are checked by others
+- ✅ **Recognition** - Contribute to the global leaderboard
+- ✅ **Community** - Join others exploring this problem
+- ✅ **Impact** - Your work becomes part of public mathematical record
+- ✅ **Credit** - Get recognized if you find something important
+
+**Get started in one command:**
+
+```bash
+# Linux/Mac
+curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
+
+# Windows
+iwr -useb https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.ps1 | iex
+
+# Docker
+docker pull jaylouisw/collatz-network:latest
+docker run -it jaylouisw/collatz-network
+```
+
+**See [DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md) for complete guide!**
