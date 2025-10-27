@@ -362,7 +362,7 @@ def get_gpu_config():
         print(f"[ERROR] GPU initialization failed: {e}")
         return None
 
-# GPU kernel for Collatz checking
+# GPU kernel for Collatz checking - Optimized branchless version
 if GPU_AVAILABLE:
     collatz_kernel = cp.RawKernel(r'''
     extern "C" __global__
@@ -383,285 +383,85 @@ if GPU_AVAILABLE:
         const unsigned long long orig_high = num_high;
         
         int steps = 0;
-        const int CYCLE_CHECK_INTERVAL = 100;  // Lazy cycle detection
+        const int CYCLE_CHECK_INTERVAL = 128;  // Power of 2 for fast modulo
         
-        // Loop unrolling: process 4 steps per iteration to reduce branch overhead
-        while (steps < max_steps - 3) {
-            // Unrolled iteration 1
-            // Optimization: Check high==0 first (most common convergence path)
-            if (__builtin_expect(num_high == 0, 0)) {
-                if (num_low == 1) {
-                    results[idx] = 1;
-                    return;
-                }
-                // High is 0, so check if below start range
-                if (num_low < start_low) {
-                    results[idx] = 1;
-                    return;
-                }
-            } else {
-                // High > 0: check if we've converged to proven range
-                if (num_high < start_high || (num_high == start_high && num_low < start_low)) {
-                    results[idx] = 1;
-                    return;
-                }
+        // Main loop - optimized with reduced branching
+        #pragma unroll 1  // Let compiler decide optimal unrolling
+        while (steps < max_steps) {
+            // Branchless convergence check
+            // Check if num == 1
+            int is_one = (num_high == 0) & (num_low == 1);
+            
+            // Check if below proven range (converged)
+            int below_proven = (num_high < proven_high) | 
+                              ((num_high == proven_high) & (num_low <= proven_low));
+            
+            // Check if below start range
+            int below_start = (num_high < start_high) | 
+                             ((num_high == start_high) & (num_low < start_low));
+            
+            // If any convergence condition met, mark as proven and exit
+            if (is_one | below_proven | below_start) {
+                results[idx] = 1;
+                return;
             }
             
-            // Lazy cycle check (every 100 steps instead of every step)
-            if (__builtin_expect((steps & (CYCLE_CHECK_INTERVAL - 1)) == 0 && steps > 0, 0)) {
-                if (num_high == orig_high && num_low == orig_low) {
+            // Cycle detection (lazy - every 128 steps)
+            if (((steps & (CYCLE_CHECK_INTERVAL - 1)) == 0) & (steps > 0)) {
+                if ((num_high == orig_high) & (num_low == orig_low)) {
                     results[idx] = -1;
                     return;
                 }
             }
             
-            // Optimized division - skip multiple powers of 2 at once
-            if (__builtin_expect((num_low & 1) == 0, 0)) {
-                // Count trailing zeros to skip multiple divisions
-                int zeros = __ffsll(num_low) - 1;  // Find first set bit
-                if (zeros > 0 && zeros < 64) {
-                    // Use funnel shift for efficient 128-bit right shift
-                    num_low = __funnelshift_r(num_high, num_low, zeros);
-                    num_high = num_high >> zeros;
-                    steps += zeros;
-                } else if (zeros == 0) {
-                    // Single shift
-                    num_low = __funnelshift_r(num_high, num_low, 1);
-                    num_high = num_high >> 1;
-                    steps++;
-                } else {
-                    // All zeros in low, check high
-                    zeros = __ffsll(num_high) - 1;
-                    num_low = num_high >> zeros;
-                    num_high = 0;
-                    steps += (64 + zeros);
-                }
-            } else {
-                // Odd number: (3n+1)/2 optimized
-                // Calculate 3n = 2n + n
-                unsigned long long carry = num_low >> 63;
+            // Branchless Collatz step
+            // For even: divide by 2^k where k = trailing zeros
+            // For odd: (3n+1)/2
+            
+            int is_odd = num_low & 1;
+            
+            if (is_odd) {
+                // Odd case: compute (3n+1)/2
+                // 3n = (n << 1) + n
                 unsigned long long low_doubled = num_low << 1;
-                unsigned long long high_doubled = (num_high << 1) | carry;
+                unsigned long long high_doubled = (num_high << 1) | (num_low >> 63);
                 
-                // Add n to get 3n
                 unsigned long long result_low = low_doubled + num_low;
-                unsigned long long result_high = high_doubled + num_high;
-                if (result_low < low_doubled) result_high++;  // Carry from low addition
+                unsigned long long result_high = high_doubled + num_high + (result_low < low_doubled);
                 
                 // Add 1
                 result_low++;
-                if (result_low == 0) result_high++;  // Carry from increment
+                result_high += (result_low == 0);
                 
-                // Division by 2 using funnel shift
+                // Divide by 2
                 num_low = __funnelshift_r(result_high, result_low, 1);
                 num_high = result_high >> 1;
                 steps++;
-            }
-            
-            // Unrolled iteration 2
-            if (__builtin_expect(num_high == 0, 0)) {
-                if (num_low == 1) {
-                    results[idx] = 1;
-                    return;
-                }
-                if (num_low < start_low) {
-                    results[idx] = 1;
-                    return;
-                }
             } else {
-                if (num_high < start_high || (num_high == start_high && num_low < start_low)) {
-                    results[idx] = 1;
-                    return;
-                }
-            }
-            
-            if (__builtin_expect((steps & (CYCLE_CHECK_INTERVAL - 1)) == 0 && steps > 0, 0)) {
-                if (num_high == orig_high && num_low == orig_low) {
-                    results[idx] = -1;
-                    return;
-                }
-            }
-            
-            if (__builtin_expect((num_low & 1) == 0, 0)) {
+                // Even case: divide by 2^k
                 int zeros = __ffsll(num_low) - 1;
+                
                 if (zeros > 0 && zeros < 64) {
+                    // Shift by zeros bits
                     num_low = __funnelshift_r(num_high, num_low, zeros);
                     num_high = num_high >> zeros;
                     steps += zeros;
                 } else if (zeros == 0) {
+                    // Single bit shift
                     num_low = __funnelshift_r(num_high, num_low, 1);
                     num_high = num_high >> 1;
                     steps++;
                 } else {
+                    // All zeros in low word, shift high word
                     zeros = __ffsll(num_high) - 1;
                     num_low = num_high >> zeros;
                     num_high = 0;
                     steps += (64 + zeros);
                 }
-            } else {
-                unsigned long long carry = num_low >> 63;
-                unsigned long long low_doubled = num_low << 1;
-                unsigned long long high_doubled = (num_high << 1) | carry;
-                unsigned long long result_low = low_doubled + num_low;
-                unsigned long long result_high = high_doubled + num_high;
-                if (result_low < low_doubled) result_high++;
-                result_low++;
-                if (result_low == 0) result_high++;
-                num_low = __funnelshift_r(result_high, result_low, 1);
-                num_high = result_high >> 1;
-                steps++;
-            }
-            
-            // Unrolled iteration 3
-            if (num_high == 0 && num_low == 1) {
-                results[idx] = 1;
-                return;
-            }
-            if (num_high < proven_high || (num_high == proven_high && num_low <= proven_low)) {
-                results[idx] = 1;
-                return;
-            }
-            if (num_high < start_high || (num_high == start_high && num_low < start_low)) {
-                results[idx] = 1;
-                return;
-            }
-            if ((steps % CYCLE_CHECK_INTERVAL) == 0 && num_high == orig_high && num_low == orig_low) {
-                results[idx] = -1;
-                return;
-            }
-            
-            if ((num_low & 1) == 0) {
-                int zeros = __ffsll(num_low) - 1;
-                if (zeros > 0 && zeros < 64) {
-                    num_low = __funnelshift_r(num_high, num_low, zeros);
-                    num_high = num_high >> zeros;
-                    steps += zeros;
-                } else if (zeros == 0) {
-                    num_low = __funnelshift_r(num_high, num_low, 1);
-                    num_high = num_high >> 1;
-                    steps++;
-                } else {
-                    zeros = __ffsll(num_high) - 1;
-                    num_low = num_high >> zeros;
-                    num_high = 0;
-                    steps += (64 + zeros);
-                }
-            } else {
-                const unsigned long long temp_low = num_low;
-                const unsigned long long temp_high = num_high;
-                num_high = (num_high << 1) | (num_low >> 63);
-                num_low = num_low << 1;
-                num_low += temp_low;
-                if (num_low < temp_low) num_high++;
-                num_high += temp_high;
-                num_low++;
-                if (num_low == 0) num_high++;
-                num_low = __funnelshift_r(num_high, num_low, 1);
-                num_high = num_high >> 1;
-                steps++;
-            }
-            
-            // Unrolled iteration 4
-            if (num_high == 0 && num_low == 1) {
-                results[idx] = 1;
-                return;
-            }
-            if (num_high < proven_high || (num_high == proven_high && num_low <= proven_low)) {
-                results[idx] = 1;
-                return;
-            }
-            if (num_high < start_high || (num_high == start_high && num_low < start_low)) {
-                results[idx] = 1;
-                return;
-            }
-            if ((steps % CYCLE_CHECK_INTERVAL) == 0 && num_high == orig_high && num_low == orig_low) {
-                results[idx] = -1;
-                return;
-            }
-            
-            if ((num_low & 1) == 0) {
-                int zeros = __ffsll(num_low) - 1;
-                if (zeros > 0 && zeros < 64) {
-                    num_low = __funnelshift_r(num_high, num_low, zeros);
-                    num_high = num_high >> zeros;
-                    steps += zeros;
-                } else if (zeros == 0) {
-                    num_low = __funnelshift_r(num_high, num_low, 1);
-                    num_high = num_high >> 1;
-                    steps++;
-                } else {
-                    zeros = __ffsll(num_high) - 1;
-                    num_low = num_high >> zeros;
-                    num_high = 0;
-                    steps += (64 + zeros);
-                }
-            } else {
-                const unsigned long long temp_low = num_low;
-                const unsigned long long temp_high = num_high;
-                num_high = (num_high << 1) | (num_low >> 63);
-                num_low = num_low << 1;
-                num_low += temp_low;
-                if (num_low < temp_low) num_high++;
-                num_high += temp_high;
-                num_low++;
-                if (num_low == 0) num_high++;
-                num_low = __funnelshift_r(num_high, num_low, 1);
-                num_high = num_high >> 1;
-                steps++;
             }
         }
         
-        // Handle remaining steps (less than 4)
-        while (steps < max_steps) {
-            if (num_high == 0 && num_low == 1) {
-                results[idx] = 1;
-                return;
-            }
-            if (num_high < proven_high || (num_high == proven_high && num_low <= proven_low)) {
-                results[idx] = 1;
-                return;
-            }
-            if (num_high < start_high || (num_high == start_high && num_low < start_low)) {
-                results[idx] = 1;
-                return;
-            }
-            if (steps > 0 && (steps % CYCLE_CHECK_INTERVAL) == 0 && num_high == orig_high && num_low == orig_low) {
-                results[idx] = -1;
-                return;
-            }
-            
-            if ((num_low & 1) == 0) {
-                int zeros = __ffsll(num_low) - 1;
-                if (zeros > 0 && zeros < 64) {
-                    num_low = __funnelshift_r(num_high, num_low, zeros);
-                    num_high = num_high >> zeros;
-                    steps += zeros;
-                } else if (zeros == 0) {
-                    num_low = __funnelshift_r(num_high, num_low, 1);
-                    num_high = num_high >> 1;
-                    steps++;
-                } else {
-                    zeros = __ffsll(num_high) - 1;
-                    num_low = num_high >> zeros;
-                    num_high = 0;
-                    steps += (64 + zeros);
-                }
-            } else {
-                const unsigned long long temp_low = num_low;
-                const unsigned long long temp_high = num_high;
-                num_high = (num_high << 1) | (num_low >> 63);
-                num_low = num_low << 1;
-                num_low += temp_low;
-                if (num_low < temp_low) num_high++;
-                num_high += temp_high;
-                num_low++;
-                if (num_low == 0) num_high++;
-                num_low = __funnelshift_r(num_high, num_low, 1);
-                num_high = num_high >> 1;
-                steps++;
-            }
-        }
-        
+        // Max steps reached without convergence
         results[idx] = 0;
     }
     ''', 'collatz_check_batch')
