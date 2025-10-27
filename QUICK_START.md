@@ -214,6 +214,37 @@ or use CPU mode: `python CollatzEngine.py cpu`
 
 ---
 
+## Performance & Optimizations
+
+### What Makes This Fast?
+
+**GPU Mode (10+ billion/sec):**
+- ✅ Branchless GPU kernel (20-40% faster than naive approach)
+- ✅ Multi-GPU support (linear scaling)
+- ✅ Adaptive auto-tuner (finds optimal settings)
+- ✅ 128-bit arithmetic (no precision loss)
+
+**CPU Mode:**
+- ✅ All-core parallelism (8 cores = 8x speed)
+- ✅ Efficient even number handling
+- ✅ Low-priority execution (doesn't slow your computer)
+
+### Why Not Even Faster?
+
+**We prioritize verification integrity:**
+- ❌ No intermediate step skipping
+- ❌ No speculative computation
+- ❌ Full cycle detection maintained
+
+**Some optimizations were intentionally avoided:**
+1. **Odd-to-odd skipping** - Would be 5x faster but skip verification steps
+2. **Multi-step batching** - Would be 2-3x faster but compromise cycle detection
+3. **SIMD vectorization** - Actually 2x slower due to overhead (tested!)
+
+**See [README.md#technical-optimizations](README.md#technical-optimizations) for full details.**
+
+---
+
 ## Advanced Usage
 
 ### Force Fresh Optimization

@@ -17,6 +17,22 @@ Complete guide to all Collatz Engine documentation.
 - Usage options (launcher, direct, benchmark)
 - How it works (architecture)
 - Configuration files
+- **Technical Optimizations** - Applied and avoided optimizations with justifications
+
+## Technical Documentation
+
+⚙️ **[KERNEL_OPTIMIZATION_NOTES.md](KERNEL_OPTIMIZATION_NOTES.md)** - Deep dive into optimizations
+- GPU kernel improvements (branchless operations)
+- Why SIMD doesn't work for Collatz
+- Why Tensor Cores aren't applicable
+- Reddit community feedback analysis
+- Performance benchmarks and trade-offs
+
+🔬 **[simd_collatz.py](simd_collatz.py)** - SIMD investigation proof-of-concept
+- NumPy vectorization attempt
+- Why it's 2x slower than scalar
+- Benchmark results
+- Lessons learned
 
 ## Troubleshooting & Support
 
