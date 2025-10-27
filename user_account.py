@@ -67,6 +67,10 @@ class UserAccountManager:
         self.storage_dir = Path(storage_dir)
         self.storage_dir.mkdir(exist_ok=True)
         
+        # Create keys directory for private keys
+        self.keys_dir = Path("keys")
+        self.keys_dir.mkdir(exist_ok=True)
+        
         # Local cache of accounts
         self.accounts: Dict[str, UserAccount] = {}
         
@@ -156,9 +160,9 @@ class UserAccountManager:
         self.accounts[user_id] = account
         self.save_accounts()
         
-        # Save private key
+        # Save private key in keys/ directory
         if private_key_path is None:
-            private_key_path = str(self.storage_dir / f"{username}_private_key.pem")
+            private_key_path = str(self.keys_dir / f"{username}_private_key.pem")
         
         private_pem = private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
