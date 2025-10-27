@@ -981,7 +981,7 @@ def run_gpu_mode():
 # ============================================================================
 
 def collatz_check_cpu(n, highest_proven):
-    """Check if n reaches 1 using CPU."""
+    """Check if n reaches 1 using CPU with optimized odd step."""
     if n <= highest_proven:
         return (True, 0, 'already_proven')
     
@@ -996,13 +996,17 @@ def collatz_check_cpu(n, highest_proven):
         if n <= highest_proven:
             return (True, steps, 'hit_proven')
         
+        # Lazy cycle detection
         if steps % 50 == 0:
             visited.add(n)
         
         if n & 1:
-            n = (n << 1) + n + 1
+            # Odd: (3n+1)/2 since 3n+1 is always even
+            # This is mathematically equivalent to 3n+1 followed by /2
+            n = ((n << 1) + n + 1) >> 1
             steps += 1
         else:
+            # Even: divide by 2^k where k = trailing zeros
             tz = (n & -n).bit_length() - 1
             n >>= tz
             steps += tz
