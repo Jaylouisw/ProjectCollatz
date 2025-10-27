@@ -18,6 +18,7 @@ Architecture:
 import json
 import time
 import hashlib
+import random
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 from dataclasses import dataclass, asdict
@@ -102,6 +103,17 @@ class IPFSCoordinator:
         # Peer discovery (other nodes in network)
         self.known_peers: List[str] = []
         self.peer_states: Dict[str, str] = {}  # peer_id -> latest_state_cid
+        
+        # Worker availability tracking (for RANDOM assignment)
+        self.available_workers: Dict[str, float] = {}  # worker_id -> last_seen_timestamp
+        self.worker_assignments: Dict[str, str] = {}  # worker_id -> assignment_id (current assignment)
+        
+        # Genesis timestamp (network start time)
+        self.genesis_timestamp: Optional[str] = None
+        
+        # Counterexample detection
+        self.counterexample_found = False
+        self.counterexample_data: Optional[Dict] = None
         
         print(f"[IPFS] 🌐 Fully decentralized node: {self.node_id[:16]}...")
         print(f"[IPFS] Network will run forever with n>0 nodes!")
@@ -416,59 +428,170 @@ class IPFSCoordinator:
         
         return assignments
     
+    def register_worker_availability(self, worker_id: str, user_id: Optional[str] = None):
+        """
+        Register worker as available for random assignment.
+        
+        SECURITY: This prevents workers from choosing their own work.
+        Workers must register availability, then coordinator randomly assigns them.
+        
+        Args:
+            worker_id: Unique worker identifier
+            user_id: Optional user account ID
+        """
+        self.available_workers[worker_id] = time.time()
+        
+        # Clean up stale workers (not seen in 5 minutes)
+        current_time = time.time()
+        stale_workers = [
+            wid for wid, last_seen in self.available_workers.items()
+            if current_time - last_seen > 300  # 5 minutes
+        ]
+        for wid in stale_workers:
+            del self.available_workers[wid]
+            if wid in self.worker_assignments:
+                # Worker went offline, free up their assignment
+                assignment_id = self.worker_assignments[wid]
+                if assignment_id in self.work_assignments:
+                    assignment = self.work_assignments[assignment_id]
+                    if worker_id in assignment.assigned_workers:
+                        assignment.assigned_workers.remove(worker_id)
+                    assignment.status = 'available'
+                del self.worker_assignments[wid]
+        
+        print(f"[IPFS] Worker {worker_id[:16]}... registered (available pool: {len(self.available_workers)})")
+    
+    def randomly_assign_workers_to_ranges(self):
+        """
+        Randomly assign available workers to unassigned ranges.
+        
+        SECURITY CRITICAL: This prevents collusion by ensuring workers
+        cannot predict who will verify their work.
+        
+        Algorithm:
+        1. Find ranges that need more verifiers
+        2. Get list of available workers (not currently assigned)
+        3. Randomly shuffle workers
+        4. Assign workers to ranges until each has required redundancy
+        """
+        if not self.available_workers:
+            return  # No workers available
+        
+        current_time = time.time()
+        
+        # Find ranges needing more verifiers
+        needs_assignment = [
+            a for a in self.work_assignments.values()
+            if a.status in ['available', 'in_progress']
+            and len(a.assigned_workers) < a.redundancy_factor
+        ]
+        
+        if not needs_assignment:
+            return  # All ranges fully assigned
+        
+        # Get workers not currently assigned
+        assigned_worker_ids = set(self.worker_assignments.keys())
+        free_workers = [
+            wid for wid in self.available_workers.keys()
+            if wid not in assigned_worker_ids
+        ]
+        
+        if not free_workers:
+            return  # No free workers
+        
+        # RANDOM SHUFFLE - this is the security feature!
+        random.shuffle(free_workers)
+        random.shuffle(needs_assignment)
+        
+        assignments_made = 0
+        
+        for assignment in needs_assignment:
+            # How many more workers needed?
+            needed = assignment.redundancy_factor - len(assignment.assigned_workers)
+            if needed <= 0:
+                continue
+            
+            # Assign random workers
+            for _ in range(needed):
+                if not free_workers:
+                    break  # No more workers available
+                
+                worker_id = free_workers.pop(0)
+                
+                # Assign worker to range
+                assignment.assigned_workers.append(worker_id)
+                self.worker_assignments[worker_id] = assignment.assignment_id
+                assignment.timeout_at = current_time + self.WORK_TIMEOUT_SECONDS
+                
+                if len(assignment.assigned_workers) >= assignment.redundancy_factor:
+                    assignment.status = 'in_progress'
+                
+                assignments_made += 1
+                
+                print(f"[IPFS] 🎲 RANDOM ASSIGNMENT: Worker {worker_id[:16]}... -> Range {assignment.range_start:,}-{assignment.range_end:,}")
+        
+        if assignments_made > 0:
+            print(f"[IPFS] Made {assignments_made} random assignments (prevents collusion)")
+            self.publish_state_to_network()
+    
     
     def claim_work(self, worker_id: str, user_id: Optional[str] = None) -> Optional[WorkAssignment]:
         """
-        Claim an available work assignment.
-        Now includes user_id for contribution tracking.
+        Check if worker has been randomly assigned work.
         
-        Returns assignment or None if no work available.
+        NEW SECURITY MODEL: Workers don't claim work, they CHECK for assignments.
+        Coordinator randomly assigns workers to prevent collusion.
+        
+        Workflow:
+        1. Worker registers availability
+        2. Coordinator randomly assigns worker to range  
+        3. Worker checks here for their assignment
+        4. Worker cannot choose or refuse work
+        
+        Args:
+            worker_id: Unique worker identifier
+            user_id: Optional user account for contribution tracking
+            
+        Returns:
+            WorkAssignment if worker has been assigned, None otherwise
         """
         current_time = time.time()
+        
+        # Register this worker as available
+        self.register_worker_availability(worker_id, user_id)
         
         # Auto-generate work if needed (decentralized!)
         self.auto_generate_work_if_needed()
         
+        # Perform random assignment (any node can do this)
+        self.randomly_assign_workers_to_ranges()
+        
         # Gossip sync with peers periodically
         self.gossip_sync_with_peers()
         
-        # First, check for timed-out assignments (re-assign)
-        for assignment in self.work_assignments.values():
-            if assignment.status == 'in_progress' and current_time > assignment.timeout_at:
-                # Timeout - make available again but keep track of failed worker
-                print(f"[IPFS] Assignment {assignment.assignment_id[:8]}... timed out")
-                assignment.status = 'available'
-                assignment.timeout_at = current_time + self.WORK_TIMEOUT_SECONDS
+        # Check if this worker has been assigned work
+        if worker_id not in self.worker_assignments:
+            return None  # Not assigned yet
         
-        # Find available work (prioritized, not yet claimed by this worker)
-        available = [
-            a for a in self.work_assignments.values()
-            if a.status in ['available', 'in_progress']
-            and worker_id not in a.assigned_workers
-            and len(a.assigned_workers) < a.redundancy_factor
-        ]
-        
-        if not available:
+        assignment_id = self.worker_assignments[worker_id]
+        if assignment_id not in self.work_assignments:
+            # Assignment no longer exists
+            del self.worker_assignments[worker_id]
             return None
         
-        # Sort by priority (higher first), then by creation time (older first)
-        available.sort(key=lambda a: (-a.priority, a.created_at))
+        assignment = self.work_assignments[assignment_id]
         
-        # Claim the highest priority work
-        assignment = available[0]
-        assignment.assigned_workers.append(worker_id)
+        # Verify worker is actually assigned to this range
+        if worker_id not in assignment.assigned_workers:
+            del self.worker_assignments[worker_id]
+            return None
         
-        if len(assignment.assigned_workers) >= assignment.redundancy_factor:
-            assignment.status = 'in_progress'
-        
-        # Reset timeout for this worker
-        assignment.timeout_at = current_time + self.WORK_TIMEOUT_SECONDS
-        
-        print(f"[IPFS] Worker {worker_id[:16]}... claimed assignment {assignment.assignment_id[:8]}...")
+        print(f"[IPFS] Worker {worker_id[:16]}... has assignment {assignment.assignment_id[:8]}...")
         if user_id:
             print(f"[IPFS] User: {user_id}")
         print(f"[IPFS] Range: {assignment.range_start:,} to {assignment.range_end:,}")
         print(f"[IPFS] Progress: {len(assignment.assigned_workers)}/{assignment.redundancy_factor} workers")
+        print(f"[IPFS] 🔒 RANDOMLY ASSIGNED (prevents collusion)")
         
         # Publish state update periodically
         if current_time - self.last_publish_time > self.STATE_PUBLISH_INTERVAL:
@@ -514,6 +637,11 @@ class IPFSCoordinator:
         # Mark worker as completed for this assignment
         if worker_id not in assignment.completed_workers:
             assignment.completed_workers.append(worker_id)
+        
+        # Free up worker for next assignment (random assignment system)
+        if worker_id in self.worker_assignments:
+            del self.worker_assignments[worker_id]
+            print(f"[IPFS] Worker {worker_id[:16]}... freed for next assignment")
         
         # Check if assignment is complete (all redundant verifications done)
         if len(assignment.completed_workers) >= assignment.redundancy_factor:

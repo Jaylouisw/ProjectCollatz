@@ -21,12 +21,14 @@ import json
 import argparse
 from typing import Optional, Dict
 from datetime import datetime
+from dataclasses import asdict
 
 # Import distributed components
 from ipfs_coordinator import IPFSCoordinator, IPFS_AVAILABLE
 from trust_system import TrustSystem
 from proof_verification import ProofVerificationSystem, CRYPTO_AVAILABLE
 from user_account import UserAccountManager, UserAccount
+from counterexample_handler import CounterexampleCoordinator
 
 # Import CollatzEngine components
 try:
@@ -67,6 +69,7 @@ class DistributedCollatzWorker:
         self.trust_system = TrustSystem()
         self.verifier = ProofVerificationSystem(self.trust_system)
         self.account_manager = UserAccountManager()
+        self.counterexample_handler = CounterexampleCoordinator(self.coordinator)
         
         # Worker identity
         self.worker_id = self.coordinator.node_id
@@ -260,6 +263,67 @@ class DistributedCollatzWorker:
             consensus_reached, message = self.verifier.submit_for_consensus(signed_proof)
             print(f"[WORKER] {message}")
             
+            # 🚨 COUNTEREXAMPLE DETECTION 🚨
+            if consensus_reached and not all_converged:
+                print(f"\n{'=' * 70}")
+                print(f"🚨 POTENTIAL COUNTEREXAMPLE DETECTED 🚨")
+                print(f"{'=' * 70}")
+                print(f"Range: {assignment.range_start:,} to {assignment.range_end:,}")
+                print(f"This could be THE number that breaks Collatz!")
+                print(f"Waiting for additional verifications...")
+                print(f"{'=' * 70}\n")
+                
+                # Check if we have enough confirmations
+                proofs = self.coordinator.get_proofs_for_assignment(assignment.assignment_id)
+                counterexample = self.counterexample_handler.check_for_counterexample(
+                    assignment.assignment_id,
+                    [asdict(p) for p in proofs]
+                )
+                
+                if counterexample:
+                    # COUNTEREXAMPLE CONFIRMED! 🎉
+                    print(f"\n\n")
+                    print(f"{'=' * 70}")
+                    print(f"🎊 COUNTEREXAMPLE VERIFIED BY NETWORK 🎊")
+                    print(f"{'=' * 70}\n")
+                    
+                    # Broadcast to all nodes
+                    self.counterexample_handler.broadcast_counterexample_found(counterexample)
+                    
+                    # Display celebration
+                    self.counterexample_handler.display_celebration_message(
+                        self.coordinator.genesis_timestamp
+                    )
+                    
+                    # Start voting
+                    self.counterexample_handler.start_voting(voting_duration_hours=24)
+                    
+                    # Get user vote
+                    while True:
+                        vote_input = input("\nYour vote [Y=Continue / N=Shutdown]: ").strip().upper()
+                        if vote_input in ['Y', 'N']:
+                            break
+                        print("Please enter Y or N")
+                    
+                    vote_continue = (vote_input == 'Y')
+                    self.counterexample_handler.submit_vote(
+                        self.worker_id,
+                        self.user_id,
+                        vote_continue
+                    )
+                    
+                    # Check if decision reached
+                    if not self.counterexample_handler.voting_active:
+                        # Decision made, exit worker
+                        stats = self.counterexample_handler.get_voting_stats()
+                        if stats['votes_shutdown'] > stats['votes_continue']:
+                            print(f"\n[WORKER] Network voted to SHUTDOWN. Goodbye!")
+                            sys.exit(0)
+                        else:
+                            print(f"\n[WORKER] Network voted to CONTINUE. Resuming work...")
+                    else:
+                        print(f"\n[WORKER] Vote submitted. Waiting for others...")
+            
             # Update statistics
             self.total_ranges_verified += 1
             self.total_numbers_checked += numbers_checked
@@ -434,6 +498,58 @@ def main():
         except Exception as e:
             print(f"[ERROR] Failed to create account: {e}")
             return 1
+    
+    # First-run wizard (if no user account provided)
+    first_run_marker = ".collatz_first_run"
+    if not args.user_key and not os.path.exists(first_run_marker):
+        print("\n" + "=" * 70)
+        print("WELCOME TO THE COLLATZ DISTRIBUTED VERIFICATION NETWORK!")
+        print("=" * 70)
+        print()
+        print("This is your first time running a worker node.")
+        print()
+        print("Would you like to create a USER ACCOUNT?")
+        print()
+        print("BENEFITS:")
+        print("  ✅ Track your contributions across all your nodes")
+        print("  ✅ Appear on the public leaderboard (IPFS webpage)")
+        print("  ✅ Build reputation in the network")
+        print("  ✅ Get credit if YOU find the counterexample!")
+        print()
+        print("WITHOUT ACCOUNT:")
+        print("  ⚠️  Anonymous worker (no persistent identity)")
+        print("  ⚠️  Stats tracked per-node only (not aggregated)")
+        print("  ⚠️  No leaderboard recognition")
+        print()
+        
+        create = input("Create user account now? [Y/n]: ").strip().lower()
+        
+        if create != 'n':
+            username = input("Enter your username: ").strip()
+            if username:
+                try:
+                    from user_account import UserAccountManager
+                    manager = UserAccountManager()
+                    user_id, private_key_path = manager.create_user_account(username)
+                    print(f"\n✅ Account created!")
+                    print(f"   Username: {username}")
+                    print(f"   Private Key: {private_key_path}")
+                    print(f"\n🔐 IMPORTANT: Backup this key file!")
+                    print(f"   It's stored in: {private_key_path}")
+                    print(f"\n   Next time, run with: --user-key {private_key_path}")
+                    print()
+                    args.user_key = private_key_path
+                except Exception as e:
+                    print(f"\n⚠️  Account creation failed: {e}")
+                    print(f"   Continuing as anonymous worker...")
+        
+        # Mark first run complete
+        with open(first_run_marker, 'w') as f:
+            f.write(datetime.now().isoformat())
+        
+        print()
+        print("=" * 70)
+        print()
     
     # Initialize worker
     try:
