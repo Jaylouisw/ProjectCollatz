@@ -1,0 +1,211 @@
+name: Build SBC Images (Simplified)
+
+on:
+  workflow_dispatch:  # Manual trigger only for now
+    inputs:
+      platform:
+        description: 'Platform to build (rpi4-arm64, rpi4-arm32, rpi-zero2, ubuntu-arm64)'
+        required: true
+        default: 'rpi4-arm64'
+        type: choice
+        options:
+        - rpi4-arm64
+        - rpi4-arm32
+        - rpi-zero2
+        - ubuntu-arm64
+      create_release:
+        description: 'Create GitHub release with built image'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # 3 hour timeout
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Free up disk space
+        run: |
+          echo "Available space before cleanup:"
+          df -h
+          
+          # Remove unnecessary packages
+          sudo apt-get remove -y \
+            azure-cli \
+            google-chrome-stable \
+            firefox \
+            powershell \
+            mono-devel \
+            dotnet-* \
+            || true
+          sudo apt-get autoremove -y
+          sudo apt-get autoclean
+          
+          # Remove large directories
+          sudo rm -rf \
+            /usr/share/dotnet \
+            /usr/local/lib/android \
+            /opt/ghc \
+            /opt/hostedtoolcache \
+            || true
+            
+          echo "Available space after cleanup:"
+          df -h
+          
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            wget unzip xz-utils parted kpartx e2fsprogs dosfstools \
+            qemu-user-static binfmt-support bc file util-linux jq
+            
+          # Enable ARM emulation
+          sudo update-binfmts --enable qemu-arm
+          sudo update-binfmts --enable qemu-aarch64
+          
+      - name: Build ${{ github.event.inputs.platform }} image
+        run: |
+          echo "Building image for platform: ${{ github.event.inputs.platform }}"
+          
+          # Show system info
+          uname -a
+          free -h
+          df -h
+          
+          # Make build script executable
+          chmod +x build-pi-image.sh
+          
+          # Create log file for debugging
+          mkdir -p logs
+          
+          # Run build with logging
+          if ! ./build-pi-image.sh --platform=${{ github.event.inputs.platform }} 2>&1 | tee logs/build-${{ github.event.inputs.platform }}.log; then
+            echo "Build failed. Showing last 50 lines of log:"
+            tail -50 logs/build-${{ github.event.inputs.platform }}.log
+            echo "Checking for any outputs in build directory:"
+            find pi-build/ -type f -name "*.img*" -o -name "*.log" | head -10 || true
+            exit 1
+          fi
+          
+      - name: Package artifacts
+        run: |
+          echo "Packaging built artifacts..."
+          mkdir -p artifacts
+          
+          # Find built images
+          IMAGES=$(find pi-build/${{ github.event.inputs.platform }}/ -name "*.img" -o -name "*.img.xz" | head -5)
+          
+          if [ -z "$IMAGES" ]; then
+            echo "No images found! Contents of build directory:"
+            find pi-build/ -type f | head -20
+            exit 1
+          fi
+          
+          # Process each image
+          for img in $IMAGES; do
+            echo "Processing: $img"
+            
+            # Compress if needed
+            if [[ ! "$img" =~ \.xz$ ]]; then
+              echo "Compressing $img..."
+              xz -9 -v "$img"
+              img="$img.xz"
+            fi
+            
+            # Create standardized name
+            basename_img=$(basename "$img")
+            final_name="collatz-network-${{ github.event.inputs.platform }}-$(date +%Y%m%d)-${basename_img}"
+            
+            # Copy to artifacts
+            cp "$img" "artifacts/$final_name"
+            
+            # Generate checksum
+            cd artifacts
+            sha256sum "$final_name" > "${final_name}.sha256"
+            cd ..
+            
+            echo "✓ Packaged: $final_name"
+          done
+          
+          # Show final artifacts
+          echo "Final artifacts:"
+          ls -lh artifacts/
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: collatz-${{ github.event.inputs.platform }}-image
+          path: artifacts/
+          retention-days: 30
+          
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.event.inputs.platform }}
+          path: logs/
+          retention-days: 7
+          
+      - name: Create Release (if requested)
+        if: github.event.inputs.create_release == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: sbc-images-${{ github.event.inputs.platform }}-$(date +%Y%m%d)
+          name: Collatz Network SBC Image - ${{ github.event.inputs.platform }}
+          body: |
+            # Collatz Network SBC Image - ${{ github.event.inputs.platform }}
+            
+            Single Board Computer image with Collatz Network pre-installed.
+            
+            **Platform:** ${{ github.event.inputs.platform }}
+            **Built:** $(date)
+            **Commit:** ${{ github.sha }}
+            
+            ## Installation
+            1. Download the `.img.xz` file
+            2. Verify with the `.sha256` checksum  
+            3. Flash to SD card using Etcher
+            4. Boot and wait for setup (5-10 minutes)
+            5. SSH in: `ssh pi@<device-ip>` (or `ubuntu@<device-ip>` for Ubuntu images)
+            6. Navigate to: `cd ~/collatz-network`
+            7. Run: `python3 network_launcher.py`
+            
+            ## Default Credentials
+            - **Raspberry Pi images:** user `pi`, password `raspberry`
+            - **Ubuntu images:** user `ubuntu`, password `ubuntu`
+            
+            **Change default passwords after first boot!**
+          files: artifacts/*
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Platform:** ${{ github.event.inputs.platform }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -d "artifacts" ]; then
+            echo "**Built Artifacts:**" >> $GITHUB_STEP_SUMMARY
+            ls -lh artifacts/ >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ -f "logs/build-${{ github.event.inputs.platform }}.log" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Build Log (last 20 lines):**" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            tail -20 "logs/build-${{ github.event.inputs.platform }}.log" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
