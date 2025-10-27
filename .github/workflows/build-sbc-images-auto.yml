@@ -238,9 +238,114 @@ jobs:
           path: artifacts/
           retention-days: 30
 
+  # Build bootable USB images for x86_64 systems
+  build-usb-x86_64-desktop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Generate version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-$(date +%Y%m%d)-${GITHUB_SHA:0:8}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache || true
+          sudo apt-get autoremove -y && sudo apt-get autoclean || true
+          df -h
+          
+      - name: Install USB build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget curl xz-utils genisoimage mtools syslinux-utils dosfstools parted kpartx bc file util-linux
+          
+      - name: Build USB x86_64 desktop image
+        run: |
+          chmod +x build-usb-image.sh
+          mkdir -p logs artifacts
+          if ! timeout 200m ./build-usb-image.sh --platform=ubuntu-x86_64-desktop --size=6144 2>&1 | tee logs/build-usb-x86_64-desktop.log; then
+            echo "Build failed. Last 50 lines:"
+            tail -50 logs/build-usb-x86_64-desktop.log
+            exit 1
+          fi
+          
+          # Package results
+          find usb-build/ubuntu-x86_64-desktop/ -name "*.img.xz" | while read img; do
+            final_name="collatz-network-usb-x86_64-desktop-${{ steps.version.outputs.version }}.img.xz"
+            cp "$img" "artifacts/$final_name"
+            cd artifacts && sha256sum "$final_name" > "${final_name}.sha256" && cd ..
+          done
+          
+      - name: Upload USB x86_64 desktop artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: usb-x86_64-desktop
+          path: artifacts/
+          retention-days: 30
+
+  build-usb-x86_64-server:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Generate version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/}"
+          else
+            VERSION="dev-$(date +%Y%m%d)-${GITHUB_SHA:0:8}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache || true
+          sudo apt-get autoremove -y && sudo apt-get autoclean || true
+          df -h
+          
+      - name: Install USB build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget curl xz-utils genisoimage mtools syslinux-utils dosfstools parted kpartx bc file util-linux
+          
+      - name: Build USB x86_64 server image
+        run: |
+          chmod +x build-usb-image.sh
+          mkdir -p logs artifacts
+          if ! timeout 200m ./build-usb-image.sh --platform=ubuntu-x86_64-server --size=4096 2>&1 | tee logs/build-usb-x86_64-server.log; then
+            echo "Build failed. Last 50 lines:"
+            tail -50 logs/build-usb-x86_64-server.log
+            exit 1
+          fi
+          
+          # Package results
+          find usb-build/ubuntu-x86_64-server/ -name "*.img.xz" | while read img; do
+            final_name="collatz-network-usb-x86_64-server-${{ steps.version.outputs.version }}.img.xz"
+            cp "$img" "artifacts/$final_name"
+            cd artifacts && sha256sum "$final_name" > "${final_name}.sha256" && cd ..
+          done
+          
+      - name: Upload USB x86_64 server artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: usb-x86_64-server
+          path: artifacts/
+          retention-days: 30
+
   # Create GitHub release with all built images
   create-release:
-    needs: [build-rpi4-arm64, build-rpi4-arm32, build-rpi-zero2, build-ubuntu-arm64]
+    needs: [build-rpi4-arm64, build-rpi4-arm32, build-rpi-zero2, build-ubuntu-arm64, build-usb-x86_64-desktop, build-usb-x86_64-server]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/') || (github.event_name == 'workflow_dispatch' && github.event.inputs.create_release == 'true')
     
@@ -274,27 +379,45 @@ jobs:
           
           # Create installation guide
           cat > INSTALLATION-GUIDE.md << 'EOF'
-          # Collatz Network SBC Images - Installation Guide
+          # Collatz Network Images - Installation Guide
           
-          ## Quick Start
-          1. Download the appropriate image for your device
-          2. Verify with SHA256 checksum: `sha256sum -c filename.sha256`
+          ## SBC Images (SD Card)
+          
+          ### Quick Start
+          1. Download the appropriate SBC image for your device
+          2. Verify: `sha256sum -c <filename>.sha256`
           3. Flash to SD card using [Etcher](https://www.balena.io/etcher/)
           4. Boot device and wait 5-10 minutes for setup
           5. SSH: `ssh pi@<device-ip>` (password: `raspberry`)
           6. Run: `cd ~/collatz-network && python3 network_launcher.py`
           
-          ## Supported Devices
+          ### SBC Devices
           - **rpi4-arm64**: Raspberry Pi 4/400/CM4 (64-bit)
           - **rpi4-arm32**: Raspberry Pi 4/400/CM4 (32-bit) 
           - **rpi-zero2**: Raspberry Pi Zero 2 W
           - **ubuntu-arm64**: Orange Pi, Rock Pi, Odroid (64-bit ARM)
           
+          ## USB Images (Desktop/Laptop)
+          
+          ### Quick Start
+          1. Download USB image (desktop or server)
+          2. Verify: `sha256sum -c <filename>.sha256`
+          3. Extract: `xz -d <filename>.img.xz`
+          4. Flash to USB: `sudo dd if=<filename>.img of=/dev/sdX bs=4M status=progress`
+          5. Boot from USB drive
+          6. Collatz Network auto-setup on first boot
+          
+          ### USB Requirements
+          - x86_64 system (Intel/AMD 64-bit)
+          - 8GB+ USB drive recommended
+          - USB boot enabled in BIOS/UEFI
+          
           ## First Boot
-          - Setup takes 5-10 minutes on first boot
-          - SSH enabled by default
-          - Wi-Fi: edit `/boot/wpa_supplicant.conf` before boot
-          - **Change default password after first login!**
+          - SBC setup takes 5-10 minutes on first boot
+          - USB images auto-setup Collatz Network
+          - SSH enabled by default on all images
+          - Wi-Fi: edit `/boot/wpa_supplicant.conf` before boot (SBC)
+          - **Change default passwords after first login!**
           EOF
           
           echo "Release contents:"
@@ -304,11 +427,12 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.version.outputs.version }}
-          name: Collatz Network SBC Images ${{ steps.version.outputs.version }}
+          name: Collatz Network Images ${{ steps.version.outputs.version }}
           body: |
-            # Collatz Distributed Network - Multi-Platform SBC Images
+            # Collatz Distributed Network - Multi-Platform Images
             
-            Pre-built SD card images with Collatz Network software pre-installed and ready to use.
+            Pre-built images with Collatz Network software pre-installed and ready to use.
+            Includes both SBC images (ARM) and bootable USB images (x86_64).
             
             ## What's Included
             - ✅ Collatz Network software pre-installed
@@ -318,17 +442,33 @@ jobs:
             - ✅ Auto-start service configured
             
             ## Supported Devices
+            
+            ### Single Board Computers (ARM)
             - **Raspberry Pi 4/400/CM4** (64-bit and 32-bit versions)
             - **Raspberry Pi Zero 2 W** (64-bit)
             - **Orange Pi, Rock Pi, Odroid** (Ubuntu ARM64)
             
+            ### Desktop/Laptop (x86_64)
+            - **Bootable USB Desktop** - Ubuntu Desktop with GUI
+            - **Bootable USB Server** - Ubuntu Server (headless)
+            
             ## Installation
+            
+            ### SBC Images (SD Card)
             1. Download appropriate `.img.xz` file for your device
             2. Verify: `sha256sum -c <filename>.sha256`
             3. Flash with [Etcher](https://www.balena.io/etcher/)
             4. Boot and wait 5-10 minutes for setup
             5. SSH: `ssh pi@<device-ip>` (default password: `raspberry`)
             6. Run: `cd ~/collatz-network && python3 network_launcher.py`
+            
+            ### USB Images (Desktop/Laptop)
+            1. Download USB `.img.xz` file (desktop or server)
+            2. Verify: `sha256sum -c <filename>.sha256`
+            3. Extract: `xz -d <filename>.img.xz`
+            4. Flash to USB: `sudo dd if=<filename>.img of=/dev/sdX bs=4M status=progress`
+            5. Boot from USB drive
+            6. Collatz Network will auto-setup on first boot
             
             **Change default passwords after first boot!**
             
@@ -343,7 +483,7 @@ jobs:
 
   # Build summary
   summary:
-    needs: [build-rpi4-arm64, build-rpi4-arm32, build-rpi-zero2, build-ubuntu-arm64]
+    needs: [build-rpi4-arm64, build-rpi4-arm32, build-rpi-zero2, build-ubuntu-arm64, build-usb-x86_64-desktop, build-usb-x86_64-server]
     runs-on: ubuntu-latest
     if: always()
     
@@ -360,21 +500,26 @@ jobs:
           
       - name: Build Summary
         run: |
-          echo "## SBC Images Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## Multi-Platform Images Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "**Version:** ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
-          echo "### Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "### SBC Images (ARM)" >> $GITHUB_STEP_SUMMARY
           echo "- **rpi4-arm64:** ${{ needs.build-rpi4-arm64.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- **rpi4-arm32:** ${{ needs.build-rpi4-arm32.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- **rpi-zero2:** ${{ needs.build-rpi-zero2.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- **ubuntu-arm64:** ${{ needs.build-ubuntu-arm64.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           
+          echo "### USB Images (x86_64)" >> $GITHUB_STEP_SUMMARY
+          echo "- **usb-x86_64-desktop:** ${{ needs.build-usb-x86_64-desktop.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **usb-x86_64-server:** ${{ needs.build-usb-x86_64-server.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
           if [[ "${{ github.event_name }}" == "push" && "$GITHUB_REF" == refs/tags/* ]]; then
             echo "🎉 **Automatic build triggered by version tag!**" >> $GITHUB_STEP_SUMMARY
-            echo "Images will be available in the GitHub Release." >> $GITHUB_STEP_SUMMARY
+            echo "All images will be available in the GitHub Release." >> $GITHUB_STEP_SUMMARY
           else
-            echo "Images are available as workflow artifacts." >> $GITHUB_STEP_SUMMARY
+            echo "All images are available as workflow artifacts." >> $GITHUB_STEP_SUMMARY
           fi
