@@ -1,4 +1,17 @@
-# Distributed Collatz - Quick Reference
+# Distributed Collatz - Quick Reference v1.0.1
+
+## 🔮 NEW: Future-Proof Engine
+
+**Try the new cross-platform engine first:**
+```bash
+python future_proof_engine.py --info    # Check system compatibility
+python future_proof_engine.py --test    # Run functionality test
+python future_proof_engine.py          # Join distributed network
+```
+
+**Works on any OS and hardware - CPU fallback always available!**
+
+---
 
 ## 🚀 ONE-COMMAND INSTALL
 
@@ -48,6 +61,23 @@ The launcher gives you a simple menu to:
 - Run diagnostics (option 10)
 
 **No need to remember commands!**
+
+### 🆕 Future-Proof Mode (v1.0.1)
+
+For maximum compatibility and automatic hardware detection:
+
+```bash
+python future_proof_engine.py --info    # System info
+python future_proof_engine.py --test    # Quick test
+python future_proof_engine.py --local   # Local mode
+python future_proof_engine.py          # Network mode
+```
+
+**Benefits:**
+- ✅ Automatic OS/hardware detection
+- ✅ CPU fallback always works
+- ✅ GPU acceleration when available
+- ✅ Future protocol compatibility
 
 **Note:** Only one launcher instance can run per machine.
 

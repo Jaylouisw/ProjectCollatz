@@ -1,6 +1,30 @@
 # Quick Start Guide
 
-## ⚠️ NOTICE: This guide is for LOCAL-ONLY verification (not recommended)
+## 🚀 NEW: Future-Proof Engine (v1.0.1) - RECOMMENDED
+
+**Try the new cross-platform, hardware-adaptive engine:**
+
+```bash
+# Check what your system supports
+python future_proof_engine.py --info
+
+# Run a quick test
+python future_proof_engine.py --test
+
+# Start computing (works on any hardware)
+python future_proof_engine.py --local
+```
+
+**Benefits of the Future-Proof Engine:**
+- ✅ **Works on any OS**: Windows, Linux, macOS automatically detected
+- ✅ **Any hardware**: CPU-only, NVIDIA, AMD, Intel GPU, Apple Silicon
+- ✅ **Graceful fallbacks**: Uses best available, falls back when needed
+- ✅ **Network ready**: Connects to distributed network when available
+- ✅ **Future ready**: Protocol and hardware independent architecture
+
+---
+
+## ⚠️ NOTICE: Legacy local-only mode below (not recommended)
 
 **For the distributed network (recommended), see:**
 - **[DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md)** - Quick start for distributed network

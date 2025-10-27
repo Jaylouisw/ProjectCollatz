@@ -1,6 +1,6 @@
-# Deployment Guide
+# Deployment Guide v1.0.1
 
-Complete guide for deploying Collatz Distributed Network across all platforms.
+Complete guide for deploying Collatz Distributed Network across all platforms with future-proof compatibility.
 
 ## Table of Contents
 
@@ -15,6 +15,25 @@ Complete guide for deploying Collatz Distributed Network across all platforms.
 ---
 
 ## Quick Start
+
+### 🔮 Future-Proof Engine (NEW - Recommended)
+
+**Check system compatibility first:**
+```bash
+python future_proof_engine.py --info
+```
+
+**Run compatibility test:**
+```bash
+python future_proof_engine.py --test
+```
+
+**Start distributed network (auto-detects everything):**
+```bash
+python future_proof_engine.py
+```
+
+**Available on all platforms - works with any hardware configuration!**
 
 ### One-Command Install
 
