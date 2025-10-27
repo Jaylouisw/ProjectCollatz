@@ -1,20 +1,40 @@
 # Distributed Collatz - Quick Reference
 
-## 🚀 Quick Start
+## 🚀 Quick Start (The Easy Way)
+
+**NEW: Just use the launcher menu!**
 
 ```bash
 # 1. Install IPFS
 # Download: https://docs.ipfs.tech/install/
 ipfs init
-ipfs daemon &
+ipfs daemon
 
 # 2. Install dependencies
 pip install -r requirements_distributed.txt
 
-# 3. Create user account (optional but recommended!)
+# 3. Run the launcher
+python launcher.py
+```
+
+The launcher gives you a simple menu to:
+- Create user accounts (option 4)
+- Start worker nodes (options 1-3)
+- View statistics and leaderboards (options 5-6)
+- Manage the network (options 7-9)
+- Run diagnostics (option 10)
+
+**No need to remember commands!**
+
+---
+
+## Manual Commands (If You Prefer)
+
+```bash
+# Create user account
 python user_account.py create alice
 
-# 4. Start worker node with your account
+# Start worker node with your account
 python distributed_collatz.py --user-key ./keys/user_alice_private.pem
 
 # Or run anonymous worker
