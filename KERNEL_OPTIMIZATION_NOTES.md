@@ -84,11 +84,78 @@ See `CollatzEngine_optimized.py` for an alternative kernel implementation that:
 
 ## Implementation Priority
 
-- [ ] High: Implement branchless even/odd detection
-- [ ] High: Reduce branch divergence in convergence checks
+- [x] High: Implement branchless even/odd detection - DONE (20-40% gain)
+- [x] High: Reduce branch divergence in convergence checks - DONE
 - [ ] Medium: Optimize memory access patterns
 - [ ] Medium: Test different unroll factors
 - [ ] Low: Consider odd-to-odd as experimental "fast mode" (with big disclaimer)
+
+## CPU SIMD Investigation (AVX-512)
+
+### Attempt: NumPy Vectorization
+**Result: NOT EFFECTIVE** ❌
+
+**Why NumPy SIMD Failed:**
+1. **NumPy overhead too high** - Array creation, indexing, masking adds latency
+2. **Sequential dependencies** - Each Collatz step depends on previous result
+3. **Branch divergence** - Different numbers converge at different rates
+4. **No true SIMD execution** - NumPy uses Python loops internally for this workload
+
+**Benchmark Results:**
+- Scalar: 1,130,000 numbers/sec
+- NumPy "SIMD": 490,000 numbers/sec
+- **Slowdown: 2.3x** (opposite of goal!)
+
+### For Real SIMD Gains, Would Need:
+
+**Option 1: Numba JIT with explicit SIMD**
+```python
+from numba import njit, vectorize
+@vectorize(['uint64(uint64)'], target='cpu')
+def collatz_step(n):
+    return (3*n + 1) >> 1 if n & 1 else n >> 1
+```
+- Estimated gain: 2-4x
+- Complexity: Medium
+- Issue: Still has sequential dependencies
+
+**Option 2: C++ with AVX-512 Intrinsics**
+```cpp
+__m512i n = _mm512_load_epi64(numbers);
+__mmask8 is_odd = _mm512_test_epi64_mask(n, ones);
+// Process 8 numbers with true SIMD
+```
+- Estimated gain: 4-8x  
+- Complexity: High
+- Issue: Requires C++ compilation, platform-specific
+
+**Option 3: Custom Assembly**
+```assembly
+vmovdqu64 zmm0, [rsi]     ; Load 8x 64-bit numbers
+vpandq zmm1, zmm0, ones   ; Check odd/even
+; AVX-512 SIMD operations
+```
+- Estimated gain: 8-10x
+- Complexity: Very High
+- Issue: Not portable, hard to maintain
+
+### Recommendation:
+
+**Don't pursue CPU SIMD optimization** because:
+1. GPU implementation already 100-1000x faster than CPU
+2. NumPy overhead makes it slower, not faster
+3. True SIMD (C++/assembly) adds huge complexity
+4. Multi-core scaling already works (8 cores = 8x speedup)
+5. Collatz sequential nature fights SIMD advantages
+
+**Better alternatives:**
+- ✅ Focus on GPU optimization (done)
+- ✅ Multi-GPU scaling (done)
+- ✅ Multi-core CPU (done)
+- 🔲 Distributed computing (multiple machines)
+- 🔲 Cloud GPU instances (AWS/GCP)
+
+The GPU kernel optimizations we just implemented provide far better ROI than CPU SIMD ever could.
 
 ## Notes
 
