@@ -23,7 +23,6 @@ setup(
     author='Jay',
     author_email='',
     url='https://github.com/Jaylouisw/ProjectCollatz',
-    license='CC BY-NC-SA 4.0',
     
     # Package discovery
     packages=find_packages(exclude=['tests', 'benchmarks']),
@@ -35,13 +34,10 @@ setup(
         'leaderboard_generator',
         'production_init',
         'network_launcher',
-        'CollatzEngine',
-        'auto_tuner',
         'trust_system',
         'contribution_tracker',
         'proof_verification',
         'error_handler',
-        'optimization_state',
     ],
     
     # Python version requirement
