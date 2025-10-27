@@ -32,6 +32,7 @@ class TrustLevel(Enum):
 class WorkerStats:
     """Statistics for a single worker."""
     worker_id: str
+    user_id: Optional[str] = None  # Link to user account
     total_verifications: int = 0
     correct_verifications: int = 0
     incorrect_verifications: int = 0
@@ -145,13 +146,49 @@ class TrustSystem:
         except Exception as e:
             print(f"[TRUST] Error saving trust database: {e}")
     
-    def register_worker(self, worker_id: str) -> WorkerStats:
-        """Register a new worker or return existing stats."""
+    
+    def register_worker(self, worker_id: str, user_id: Optional[str] = None) -> WorkerStats:
+        """Register a new worker or return existing stats. Can link to user account."""
         if worker_id not in self.workers:
-            self.workers[worker_id] = WorkerStats(worker_id=worker_id)
-            print(f"[TRUST] New worker registered: {worker_id[:16]}... (UNTRUSTED)")
+            self.workers[worker_id] = WorkerStats(worker_id=worker_id, user_id=user_id)
+            if user_id:
+                print(f"[TRUST] New worker registered: {worker_id[:16]}... (UNTRUSTED) - User: {user_id}")
+            else:
+                print(f"[TRUST] New worker registered: {worker_id[:16]}... (UNTRUSTED)")
+            self.save_state()
+        elif user_id and not self.workers[worker_id].user_id:
+            # Link existing worker to user account
+            self.workers[worker_id].user_id = user_id
             self.save_state()
         return self.workers[worker_id]
+    
+    def get_workers_by_user(self, user_id: str) -> List[WorkerStats]:
+        """Get all workers belonging to a user."""
+        return [w for w in self.workers.values() if w.user_id == user_id]
+    
+    def get_user_aggregate_stats(self, user_id: str) -> Dict:
+        """Get aggregated statistics for all of a user's workers."""
+        user_workers = self.get_workers_by_user(user_id)
+        
+        if not user_workers:
+            return {
+                'total_workers': 0,
+                'total_verifications': 0,
+                'total_numbers_checked': 0,
+                'total_compute_time': 0.0,
+                'average_reputation': 0.0
+            }
+        
+        return {
+            'total_workers': len(user_workers),
+            'total_verifications': sum(w.total_verifications for w in user_workers),
+            'correct_verifications': sum(w.correct_verifications for w in user_workers),
+            'incorrect_verifications': sum(w.incorrect_verifications for w in user_workers),
+            'total_numbers_checked': sum(w.total_numbers_checked for w in user_workers),
+            'total_compute_time': sum(w.total_compute_time for w in user_workers),
+            'average_reputation': sum(w.reputation_score for w in user_workers) / len(user_workers),
+            'best_trust_level': max((w.trust_level for w in user_workers), key=lambda t: t.value)
+        }
     
     def get_worker_stats(self, worker_id: str) -> Optional[WorkerStats]:
         """Get statistics for a worker."""

@@ -26,6 +26,7 @@ from datetime import datetime
 from ipfs_coordinator import IPFSCoordinator, IPFS_AVAILABLE
 from trust_system import TrustSystem
 from proof_verification import ProofVerificationSystem, CRYPTO_AVAILABLE
+from user_account import UserAccountManager, UserAccount
 
 # Import CollatzEngine components
 try:
@@ -37,12 +38,21 @@ except ImportError:
 
 
 class DistributedCollatzWorker:
-    """A worker node in the distributed Collatz verification network."""
+    """A worker node in the FULLY DECENTRALIZED Collatz verification network."""
     
     def __init__(self, ipfs_api: str = '/ip4/127.0.0.1/tcp/5001',
                  use_gpu: bool = True,
+                 user_key_file: Optional[str] = None,
                  worker_name: Optional[str] = None):
-        """Initialize distributed worker."""
+        """
+        Initialize distributed worker.
+        
+        Args:
+            ipfs_api: IPFS API address
+            use_gpu: Use GPU if available
+            user_key_file: Path to user private key (for account linking)
+            worker_name: Optional worker name
+        """
         if not IPFS_AVAILABLE:
             raise ImportError("Please install: pip install ipfshttpclient")
         
@@ -56,11 +66,32 @@ class DistributedCollatzWorker:
         self.coordinator = IPFSCoordinator(ipfs_api=ipfs_api)
         self.trust_system = TrustSystem()
         self.verifier = ProofVerificationSystem(self.trust_system)
+        self.account_manager = UserAccountManager()
         
         # Worker identity
         self.worker_id = self.coordinator.node_id
         self.worker_name = worker_name or f"Worker-{self.worker_id[:8]}"
         self.use_gpu = use_gpu and GPU_AVAILABLE
+        
+        # User account (NEW!)
+        self.user_account: Optional[UserAccount] = None
+        self.user_id: Optional[str] = None
+        self.user_private_key = None
+        
+        if user_key_file:
+            # Load existing user account
+            try:
+                self.user_account, self.user_private_key = self.account_manager.load_user_account(user_key_file)
+                self.user_id = self.user_account.user_id
+                
+                # Register this worker to the user account
+                self.account_manager.register_node(self.user_id, self.worker_id)
+                
+                print(f"[WORKER] 👤 Logged in as: {self.user_account.username}")
+                print(f"[WORKER] User contributions: {self.user_account.total_contributions:,} numbers")
+            except Exception as e:
+                print(f"[WORKER] ⚠️ Could not load user account: {e}")
+                print(f"[WORKER] Running as anonymous worker")
         
         # Load or generate worker keypair
         self.private_key, self.public_key = self.load_or_generate_keypair()
@@ -69,15 +100,21 @@ class DistributedCollatzWorker:
         public_key_pem = self.verifier.serialize_public_key(self.public_key)
         self.verifier.register_worker_key(self.worker_id, public_key_pem)
         
+        # Register worker with trust system (link to user if available)
+        self.trust_system.register_worker(self.worker_id, self.user_id)
+        
         # Statistics
         self.total_ranges_verified = 0
         self.total_numbers_checked = 0
         self.total_compute_time = 0.0
         self.session_start = time.time()
         
-        print(f"[WORKER] Initialized: {self.worker_name}")
-        print(f"[WORKER] Node ID: {self.worker_id}")
+        print(f"[WORKER] 🌐 Fully Decentralized Node: {self.worker_name}")
+        print(f"[WORKER] Node ID: {self.worker_id[:16]}...")
+        if self.user_id:
+            print(f"[WORKER] User: {self.user_account.username} ({self.user_id})")
         print(f"[WORKER] Mode: {'GPU' if self.use_gpu else 'CPU'}")
+        print(f"[WORKER] Network peers: {self.coordinator.get_network_statistics()['known_peers']}")
         
         # Check trust level
         stats = self.trust_system.get_worker_stats(self.worker_id)
@@ -86,6 +123,8 @@ class DistributedCollatzWorker:
             print(f"[WORKER] Reputation: {stats.reputation_score:.1f}/100")
         else:
             print(f"[WORKER] Trust Level: NEW (UNTRUSTED)")
+        
+        print(f"[WORKER] 🚀 Network runs forever with n>0 nodes!")
     
     def load_or_generate_keypair(self):
         """Load existing keypair or generate new one."""
@@ -137,16 +176,19 @@ class DistributedCollatzWorker:
     def claim_and_verify_work(self) -> bool:
         """
         Claim work from coordinator and verify it.
+        Tracks contributions for user account if logged in.
         Returns True if work was completed, False if no work available.
         """
-        # Claim work assignment
-        assignment = self.coordinator.claim_work(self.worker_id)
+        # Claim work assignment (now passes user_id for tracking)
+        assignment = self.coordinator.claim_work(self.worker_id, self.user_id)
         
         if assignment is None:
-            print(f"[WORKER] No work available")
+            print(f"[WORKER] No work available (network auto-generates more)")
             return False
         
         print(f"\n[WORKER] 🔨 Starting verification of range:")
+        if self.user_id:
+            print(f"[WORKER]   User: {self.user_account.username}")
         print(f"[WORKER]   Range: {assignment.range_start:,} to {assignment.range_end:,}")
         print(f"[WORKER]   Numbers: ~{assignment.range_end - assignment.range_start:,}")
         
@@ -172,6 +214,8 @@ class DistributedCollatzWorker:
             detailed_proof = {
                 'worker_id': self.worker_id,
                 'worker_name': self.worker_name,
+                'user_id': self.user_id,  # Include user ID
+                'username': self.user_account.username if self.user_account else None,
                 'assignment_id': assignment.assignment_id,
                 'range_start': assignment.range_start,
                 'range_end': assignment.range_end,
@@ -185,7 +229,7 @@ class DistributedCollatzWorker:
             
             # Upload proof to IPFS via coordinator
             proof_cid = self.coordinator.client.add_json(detailed_proof)
-            print(f"[WORKER] Proof uploaded to IPFS: /ipfs/{proof_cid}")
+            print(f"[WORKER] Proof uploaded to IPFS: /ipfs/{proof_cid[:16]}...")
             
             # Create signed proof
             signed_proof = self.verifier.create_signed_proof(
@@ -200,7 +244,7 @@ class DistributedCollatzWorker:
                 ipfs_cid=proof_cid
             )
             
-            # Submit proof to coordinator
+            # Submit proof to coordinator (now passes user_id)
             proof_id = self.coordinator.submit_verification_proof(
                 worker_id=self.worker_id,
                 assignment_id=assignment.assignment_id,
@@ -208,7 +252,8 @@ class DistributedCollatzWorker:
                 numbers_checked=numbers_checked,
                 max_steps=100000,
                 compute_time=compute_time,
-                detailed_proof=detailed_proof
+                detailed_proof=detailed_proof,
+                user_id=self.user_id
             )
             
             # Submit for consensus/trust verification
@@ -219,6 +264,23 @@ class DistributedCollatzWorker:
             self.total_ranges_verified += 1
             self.total_numbers_checked += numbers_checked
             self.total_compute_time += compute_time
+            
+            # Update user account contributions if logged in
+            if self.user_id and self.account_manager and consensus_reached:
+                try:
+                    self.account_manager.update_contributions(
+                        self.user_id,
+                        numbers_checked,
+                        1,  # 1 range completed
+                        compute_time
+                    )
+                    # Show updated user stats
+                    stats = self.account_manager.get_user_stats(self.user_id)
+                    print(f"[WORKER] 👤 User Stats: {stats['total_numbers_checked']:,} numbers | "
+                          f"{stats['total_ranges_completed']:,} ranges | "
+                          f"{stats['total_compute_time']:.1f}s total")
+                except Exception as e:
+                    print(f"[WORKER] ⚠️ Failed to update user contributions: {e}")
             
             # Check if range is complete and update global highest
             if consensus_reached and all_converged:
@@ -344,6 +406,10 @@ def main():
                        help='Use CPU-only mode (disable GPU)')
     parser.add_argument('--name', type=str,
                        help='Worker name (default: auto-generated)')
+    parser.add_argument('--user-key', type=str,
+                       help='Path to user private key file (for contribution tracking)')
+    parser.add_argument('--create-account', type=str, metavar='USERNAME',
+                       help='Create new user account with specified username')
     parser.add_argument('--iterations', type=int,
                        help='Number of work assignments to complete (default: infinite)')
     parser.add_argument('--generate-work', type=int, metavar='N',
@@ -351,21 +417,42 @@ def main():
     
     args = parser.parse_args()
     
+    # Handle user account creation
+    if args.create_account:
+        print(f"[ACCOUNT] Creating new user account: {args.create_account}")
+        try:
+            from user_account import UserAccountManager
+            manager = UserAccountManager()
+            user_id, private_key_path = manager.create_user_account(args.create_account)
+            print(f"[ACCOUNT] ✅ Account created!")
+            print(f"[ACCOUNT]   User ID: {user_id}")
+            print(f"[ACCOUNT]   Username: {args.create_account}")
+            print(f"[ACCOUNT]   Private Key: {private_key_path}")
+            print(f"\n[ACCOUNT] 🔐 Keep your private key safe!")
+            print(f"[ACCOUNT] Use it to run workers: --user-key {private_key_path}")
+            return 0
+        except Exception as e:
+            print(f"[ERROR] Failed to create account: {e}")
+            return 1
+    
     # Initialize worker
     try:
         worker = DistributedCollatzWorker(
             ipfs_api=args.ipfs_api,
             use_gpu=not args.cpu_only,
-            worker_name=args.name
+            worker_name=args.name,
+            user_key_file=args.user_key
         )
     except Exception as e:
         print(f"[ERROR] Failed to initialize worker: {e}")
         print(f"\nMake sure:")
         print(f"  1. IPFS daemon is running: ipfs daemon")
         print(f"  2. Python packages installed: pip install ipfshttpclient cryptography")
+        if args.user_key:
+            print(f"  3. User key file exists: {args.user_key}")
         return 1
     
-    # Generate work if requested (useful for network coordinator)
+    # Generate work if requested (any peer can generate work in decentralized network)
     if args.generate_work:
         print(f"[WORKER] Generating {args.generate_work} new work assignments...")
         assignments = worker.coordinator.generate_work_frontier(num_assignments=args.generate_work)

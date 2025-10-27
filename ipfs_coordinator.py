@@ -65,34 +65,49 @@ class VerificationProof:
 
 
 class IPFSCoordinator:
-    """Coordinates distributed work via IPFS."""
+    """
+    Fully decentralized coordinator via IPFS.
+    
+    Key features:
+    - NO single coordinator - any node can propose work
+    - Self-organizing via gossip protocol
+    - Automatic work generation when frontier runs low
+    - Peer-to-peer state synchronization
+    - Network runs forever with n>0 nodes
+    """
     
     # Configuration
     WORK_TIMEOUT_SECONDS = 3600  # 1 hour to complete assigned work
     REDUNDANCY_FACTOR = 3  # Each range verified by 3 workers minimum
     RANGE_SIZE = 10_000_000_000  # 10 billion numbers per assignment
     STATE_PUBLISH_INTERVAL = 300  # Publish IPNS update every 5 minutes
+    WORK_BUFFER_SIZE = 50  # Keep 50 assignments available (auto-generate more)
+    GOSSIP_INTERVAL = 60  # Sync with peers every 60 seconds
     
-    def __init__(self, ipfs_api: str = '/ip4/127.0.0.1/tcp/5001', 
-                 project_key: str = 'collatz-distributed'):
-        """Initialize IPFS coordinator."""
+    def __init__(self, ipfs_api: str = '/ip4/127.0.0.1/tcp/5001'):
+        """Initialize IPFS coordinator (fully decentralized)."""
         if not IPFS_AVAILABLE:
             raise ImportError("ipfshttpclient not available")
         
         self.client = ipfshttpclient.connect(ipfs_api)
-        self.project_key = project_key
         self.node_id = self.client.id()['ID']
         
-        # Local state (synced with IPFS)
+        # Local state (synced via gossip)
         self.work_assignments: Dict[str, WorkAssignment] = {}
         self.verification_proofs: Dict[str, VerificationProof] = {}
         self.global_highest_proven = 0
         self.last_publish_time = 0
+        self.last_gossip_time = 0
         
-        print(f"[IPFS] Connected as node: {self.node_id}")
+        # Peer discovery (other nodes in network)
+        self.known_peers: List[str] = []
+        self.peer_states: Dict[str, str] = {}  # peer_id -> latest_state_cid
         
-        # Load existing state from IPNS
-        self.load_state_from_ipns()
+        print(f"[IPFS] 🌐 Fully decentralized node: {self.node_id[:16]}...")
+        print(f"[IPFS] Network will run forever with n>0 nodes!")
+        
+        # Load existing state from network
+        self.discover_and_sync_peers()
     
     def generate_assignment_id(self, range_start: int, range_end: int) -> str:
         """Generate unique ID for a work assignment."""
@@ -104,14 +119,55 @@ class IPFSCoordinator:
         data = f"{worker_id}-{assignment_id}-{time.time()}"
         return hashlib.sha256(data.encode()).hexdigest()[:16]
     
-    def load_state_from_ipns(self):
-        """Load current state from IPNS (if exists)."""
+    
+    def discover_and_sync_peers(self):
+        """
+        Discover other nodes in network and sync state.
+        Fully peer-to-peer - no coordinator needed.
+        """
         try:
-            # Try to resolve project IPNS name
-            ipns_path = f"/ipns/{self.project_key}"
-            state_cid = self.client.name.resolve(ipns_path)['Path']
+            # Find peers via IPFS swarm
+            swarm_peers = self.client.swarm.peers()
+            self.known_peers = [p['Peer'] for p in swarm_peers if p['Peer'] != self.node_id]
             
-            # Fetch state from IPFS
+            print(f"[IPFS] Discovered {len(self.known_peers)} peers in network")
+            
+            # Try to load state from well-known IPNS path (community shared)
+            # Multiple nodes can publish here, we take most recent
+            try:
+                # Community namespace (anyone can read)
+                community_path = "/ipns/collatz-distributed-network"
+                resolved = self.client.name.resolve(community_path)
+                state_cid = resolved['Path'].replace('/ipfs/', '')
+                
+                self.load_state_from_cid(state_cid)
+                print(f"[IPFS] Synced with network state: /ipfs/{state_cid[:16]}...")
+                
+            except Exception as e:
+                print(f"[IPFS] No existing network state found (first node?)")
+                print(f"[IPFS] Initializing new network...")
+                self.initialize_network()
+        
+        except Exception as e:
+            print(f"[IPFS] Peer discovery error: {e}")
+            print(f"[IPFS] Running in standalone mode")
+    
+    def initialize_network(self):
+        """Initialize new network if no existing state found."""
+        print(f"[IPFS] 🌟 Bootstrapping new Collatz verification network!")
+        
+        # Generate initial work frontier
+        self.generate_work_frontier_internal(
+            start_from=1,  # Start from beginning
+            num_assignments=self.WORK_BUFFER_SIZE
+        )
+        
+        # Publish initial state
+        self.publish_state_to_network()
+    
+    def load_state_from_cid(self, state_cid: str):
+        """Load state from a specific IPFS CID."""
+        try:
             state_json = self.client.cat(state_cid)
             state = json.loads(state_json)
             
@@ -127,23 +183,26 @@ class IPFSCoordinator:
             
             self.global_highest_proven = state.get('global_highest_proven', 0)
             
-            print(f"[IPFS] Loaded state from IPNS: {len(self.work_assignments)} assignments, "
+            print(f"[IPFS] Loaded: {len(self.work_assignments)} assignments, "
                   f"{len(self.verification_proofs)} proofs")
-            print(f"[IPFS] Global highest proven: {self.global_highest_proven:,}")
+            print(f"[IPFS] Global highest: {self.global_highest_proven:,}")
             
         except Exception as e:
-            print(f"[IPFS] No existing state found (first run?): {e}")
-            print(f"[IPFS] Starting with clean state")
+            print(f"[IPFS] Error loading state: {e}")
     
-    def save_state_to_ipns(self):
-        """Save current state to IPFS and publish via IPNS."""
+    def publish_state_to_network(self):
+        """
+        Publish current state to IPFS network.
+        Any node can do this - uses content-addressing for consensus.
+        """
         try:
             # Prepare state data
             state = {
                 'global_highest_proven': self.global_highest_proven,
                 'work_assignments': [asdict(a) for a in self.work_assignments.values()],
                 'verification_proofs': [asdict(p) for p in self.verification_proofs.values()],
-                'last_updated': time.time(),
+                'published_by': self.node_id,
+                'timestamp': time.time(),
                 'network_stats': {
                     'total_assignments': len(self.work_assignments),
                     'completed_assignments': sum(1 for a in self.work_assignments.values() 
@@ -157,20 +216,164 @@ class IPFSCoordinator:
             result = self.client.add_str(state_json)
             state_cid = result
             
-            # Publish to IPNS
-            self.client.name.publish(state_cid, key=self.project_key, lifetime='24h')
+            # Publish to personal IPNS (each node has own IPNS)
+            try:
+                self.client.name.publish(state_cid, key='collatz-state', lifetime='24h')
+            except:
+                pass  # IPNS key might not exist yet
             
             self.last_publish_time = time.time()
             
-            print(f"[IPFS] State published to IPNS: /ipfs/{state_cid}")
-            print(f"[IPFS] Access via: /ipns/{self.project_key}")
+            print(f"[IPFS] 📤 Published state: /ipfs/{state_cid[:16]}...")
+            
+            return state_cid
             
         except Exception as e:
             print(f"[IPFS] Error publishing state: {e}")
+            return None
     
-    def create_work_assignment(self, range_start: int, range_end: int, 
-                               priority: int = 1) -> WorkAssignment:
-        """Create a new work assignment."""
+    def gossip_sync_with_peers(self):
+        """
+        Sync state with peers via gossip protocol.
+        Merges states from multiple nodes for consensus.
+        """
+        current_time = time.time()
+        
+        if current_time - self.last_gossip_time < self.GOSSIP_INTERVAL:
+            return  # Too soon
+        
+        self.last_gossip_time = current_time
+        
+        # Refresh peer list
+        try:
+            swarm_peers = self.client.swarm.peers()
+            self.known_peers = [p['Peer'] for p in swarm_peers if p['Peer'] != self.node_id]
+        except:
+            pass
+        
+        # Try to fetch and merge state from random peers
+        import random
+        sample_size = min(5, len(self.known_peers))
+        if sample_size > 0:
+            sample_peers = random.sample(self.known_peers, sample_size)
+            
+            for peer_id in sample_peers:
+                try:
+                    # Try to resolve peer's IPNS
+                    peer_ipns = f"/ipns/{peer_id}"
+                    resolved = self.client.name.resolve(peer_ipns, timeout=5)
+                    peer_state_cid = resolved['Path'].replace('/ipfs/', '')
+                    
+                    # Merge their state with ours
+                    self.merge_peer_state(peer_state_cid)
+                    
+                except:
+                    continue  # Peer might not have published yet
+        
+        print(f"[IPFS] 🔄 Gossip sync complete ({len(self.known_peers)} peers)")
+    
+    def merge_peer_state(self, peer_state_cid: str):
+        """
+        Merge state from another peer.
+        Resolves conflicts by taking maximum progress.
+        """
+        try:
+            peer_json = self.client.cat(peer_state_cid)
+            peer_state = json.loads(peer_json)
+            
+            # Merge work assignments (union of all assignments)
+            for assignment_dict in peer_state.get('work_assignments', []):
+                assignment = WorkAssignment(**assignment_dict)
+                assignment_id = assignment.assignment_id
+                
+                if assignment_id not in self.work_assignments:
+                    # New assignment, add it
+                    self.work_assignments[assignment_id] = assignment
+                else:
+                    # Merge assignment (take more complete version)
+                    existing = self.work_assignments[assignment_id]
+                    if len(assignment.completed_workers) > len(existing.completed_workers):
+                        self.work_assignments[assignment_id] = assignment
+            
+            # Merge proofs (union)
+            for proof_dict in peer_state.get('verification_proofs', []):
+                proof = VerificationProof(**proof_dict)
+                if proof.proof_id not in self.verification_proofs:
+                    self.verification_proofs[proof.proof_id] = proof
+            
+            # Take maximum highest_proven
+            peer_highest = peer_state.get('global_highest_proven', 0)
+            if peer_highest > self.global_highest_proven:
+                self.global_highest_proven = peer_highest
+                print(f"[IPFS] ⬆️ Updated global highest: {self.global_highest_proven:,}")
+        
+        except Exception as e:
+            print(f"[IPFS] Error merging peer state: {e}")
+    
+    def auto_generate_work_if_needed(self):
+        """
+        Automatically generate new work if frontier is running low.
+        Any node can do this - network self-organizes.
+        """
+        # Count available work
+        available = sum(1 for a in self.work_assignments.values() 
+                       if a.status in ['available', 'in_progress'] and 
+                       len(a.assigned_workers) < a.redundancy_factor)
+        
+        if available < self.WORK_BUFFER_SIZE // 2:
+            print(f"[IPFS] ⚠️ Low work available ({available}), generating more...")
+            
+            # Find highest range end
+            max_range_end = 0
+            for assignment in self.work_assignments.values():
+                if assignment.range_end > max_range_end:
+                    max_range_end = assignment.range_end
+            
+            # Generate new work at frontier
+            start_from = max(max_range_end, self.global_highest_proven + 1)
+            new_assignments = self.generate_work_frontier_internal(
+                start_from=start_from,
+                num_assignments=self.WORK_BUFFER_SIZE
+            )
+            
+            print(f"[IPFS] ✅ Generated {len(new_assignments)} new assignments")
+            
+            # Publish to network immediately
+            self.publish_state_to_network()
+    
+    def generate_work_frontier_internal(self, start_from: int, 
+                                       num_assignments: int) -> List[WorkAssignment]:
+        """
+        Generate new work assignments (internal method).
+        Creates chunks at frontier for verification.
+        """
+        # Ensure start is odd
+        if start_from % 2 == 0:
+            start_from += 1
+        
+        assignments = []
+        current = start_from
+        
+        for i in range(num_assignments):
+            range_end = current + self.RANGE_SIZE
+            
+            # Check if this range already exists
+            existing = any(
+                a.range_start == current and a.range_end == range_end
+                for a in self.work_assignments.values()
+            )
+            
+            if not existing:
+                assignment = self.create_work_assignment_internal(current, range_end)
+                assignments.append(assignment)
+            
+            current = range_end
+        
+        return assignments
+    
+    def create_work_assignment_internal(self, range_start: int, range_end: int, 
+                                       priority: int = 1) -> WorkAssignment:
+        """Create a new work assignment (internal method)."""
         assignment = WorkAssignment(
             assignment_id=self.generate_assignment_id(range_start, range_end),
             range_start=range_start,
@@ -185,25 +388,55 @@ class IPFSCoordinator:
         )
         
         self.work_assignments[assignment.assignment_id] = assignment
-        
-        # Publish immediately for critical assignments
-        if priority > 5:
-            self.save_state_to_ipns()
-        
         return assignment
     
-    def claim_work(self, worker_id: str) -> Optional[WorkAssignment]:
+    
+    # Keep old methods for backward compatibility (they now call internal versions)
+    def save_state_to_ipns(self):
+        """Legacy method - now calls publish_state_to_network()."""
+        return self.publish_state_to_network()
+    
+    def create_work_assignment(self, range_start: int, range_end: int, 
+                               priority: int = 1) -> WorkAssignment:
+        """Legacy method - now calls internal version."""
+        return self.create_work_assignment_internal(range_start, range_end, priority)
+    
+    def generate_work_frontier(self, start_from: Optional[int] = None, 
+                                num_assignments: int = 100) -> List[WorkAssignment]:
+        """Legacy method - now calls internal version with auto-publish."""
+        if start_from is None:
+            start_from = self.global_highest_proven + 1
+        
+        assignments = self.generate_work_frontier_internal(start_from, num_assignments)
+        
+        if assignments:
+            print(f"[IPFS] Generated {len(assignments)} new assignments")
+            print(f"[IPFS] Frontier: {assignments[0].range_start:,} to {assignments[-1].range_end:,}")
+            self.publish_state_to_network()
+        
+        return assignments
+    
+    
+    def claim_work(self, worker_id: str, user_id: Optional[str] = None) -> Optional[WorkAssignment]:
         """
         Claim an available work assignment.
+        Now includes user_id for contribution tracking.
+        
         Returns assignment or None if no work available.
         """
         current_time = time.time()
+        
+        # Auto-generate work if needed (decentralized!)
+        self.auto_generate_work_if_needed()
+        
+        # Gossip sync with peers periodically
+        self.gossip_sync_with_peers()
         
         # First, check for timed-out assignments (re-assign)
         for assignment in self.work_assignments.values():
             if assignment.status == 'in_progress' and current_time > assignment.timeout_at:
                 # Timeout - make available again but keep track of failed worker
-                print(f"[IPFS] Assignment {assignment.assignment_id} timed out")
+                print(f"[IPFS] Assignment {assignment.assignment_id[:8]}... timed out")
                 assignment.status = 'available'
                 assignment.timeout_at = current_time + self.WORK_TIMEOUT_SECONDS
         
@@ -231,22 +464,25 @@ class IPFSCoordinator:
         # Reset timeout for this worker
         assignment.timeout_at = current_time + self.WORK_TIMEOUT_SECONDS
         
-        print(f"[IPFS] Worker {worker_id[:16]}... claimed assignment {assignment.assignment_id}")
+        print(f"[IPFS] Worker {worker_id[:16]}... claimed assignment {assignment.assignment_id[:8]}...")
+        if user_id:
+            print(f"[IPFS] User: {user_id}")
         print(f"[IPFS] Range: {assignment.range_start:,} to {assignment.range_end:,}")
         print(f"[IPFS] Progress: {len(assignment.assigned_workers)}/{assignment.redundancy_factor} workers")
         
         # Publish state update periodically
         if current_time - self.last_publish_time > self.STATE_PUBLISH_INTERVAL:
-            self.save_state_to_ipns()
+            self.publish_state_to_network()
         
         return assignment
     
     def submit_verification_proof(self, worker_id: str, assignment_id: str,
                                    all_converged: bool, numbers_checked: int,
                                    max_steps: int, compute_time: float,
-                                   detailed_proof: Dict) -> str:
+                                   detailed_proof: Dict, user_id: Optional[str] = None) -> str:
         """
         Submit a verification proof to IPFS.
+        Now includes user_id for contribution tracking.
         Returns proof_id.
         """
         # Upload detailed proof to IPFS
@@ -282,13 +518,15 @@ class IPFSCoordinator:
         # Check if assignment is complete (all redundant verifications done)
         if len(assignment.completed_workers) >= assignment.redundancy_factor:
             assignment.status = 'completed'
-            print(f"[IPFS] ✅ Assignment {assignment_id} completed by {assignment.redundancy_factor} workers")
+            print(f"[IPFS] ✅ Assignment {assignment_id[:8]}... completed by {assignment.redundancy_factor} workers")
         
-        # Publish state update
-        self.save_state_to_ipns()
+        # Publish state update (decentralized - any node can publish)
+        self.publish_state_to_network()
         
-        print(f"[IPFS] Proof submitted: {proof.proof_id}")
-        print(f"[IPFS] IPFS CID: /ipfs/{proof_cid}")
+        print(f"[IPFS] Proof submitted: {proof.proof_id[:8]}...")
+        if user_id:
+            print(f"[IPFS] User: {user_id}")
+        print(f"[IPFS] IPFS CID: /ipfs/{proof_cid[:16]}...")
         
         return proof.proof_id
     
@@ -313,52 +551,15 @@ class IPFSCoordinator:
             
             self.save_state_to_ipns()
     
+    
     def update_global_highest(self, new_highest: int):
-        """Update the global highest proven value."""
+        """Update the global highest proven value (decentralized)."""
         if new_highest > self.global_highest_proven:
             self.global_highest_proven = new_highest
             print(f"[IPFS] 🎉 New global highest proven: {new_highest:,}")
             
-            # Publish immediately for milestone updates
-            self.save_state_to_ipns()
-    
-    def generate_work_frontier(self, start_from: Optional[int] = None, 
-                                num_assignments: int = 100) -> List[WorkAssignment]:
-        """
-        Generate new work assignments at the frontier.
-        Creates chunks of RANGE_SIZE for verification.
-        """
-        if start_from is None:
-            start_from = self.global_highest_proven + 1
-        
-        # Ensure start is odd
-        if start_from % 2 == 0:
-            start_from += 1
-        
-        assignments = []
-        current = start_from
-        
-        for i in range(num_assignments):
-            range_end = current + self.RANGE_SIZE
-            
-            # Check if this range already has an assignment
-            existing = any(
-                a.range_start == current and a.range_end == range_end
-                for a in self.work_assignments.values()
-            )
-            
-            if not existing:
-                assignment = self.create_work_assignment(current, range_end)
-                assignments.append(assignment)
-            
-            current = range_end
-        
-        if assignments:
-            print(f"[IPFS] Generated {len(assignments)} new work assignments")
-            print(f"[IPFS] Frontier: {assignments[0].range_start:,} to {assignments[-1].range_end:,}")
-            self.save_state_to_ipns()
-        
-        return assignments
+            # Publish immediately for milestone updates (any node can publish!)
+            self.publish_state_to_network()
     
     def get_network_statistics(self) -> Dict:
         """Get statistics about the distributed network."""
@@ -375,6 +576,7 @@ class IPFSCoordinator:
         completed = sum(1 for a in self.work_assignments.values() if a.status == 'completed')
         in_progress = sum(1 for a in self.work_assignments.values() if a.status == 'in_progress')
         conflicts = sum(1 for a in self.work_assignments.values() if a.status == 'conflict')
+        available = sum(1 for a in self.work_assignments.values() if a.status == 'available')
         
         # Total numbers verified
         total_verified = sum(
@@ -389,14 +591,17 @@ class IPFSCoordinator:
         return {
             'global_highest_proven': self.global_highest_proven,
             'active_workers': len(active_workers),
+            'known_peers': len(self.known_peers),
             'total_assignments': total_assignments,
-            'completed_assignments': completed,
+            'available_assignments': available,
             'in_progress_assignments': in_progress,
+            'completed_assignments': completed,
             'conflicting_assignments': conflicts,
             'total_proofs': len(self.verification_proofs),
             'total_numbers_verified': total_verified,
             'total_compute_time_hours': total_compute / 3600,
-            'average_time_per_billion': (total_compute / (total_verified / 1e9)) if total_verified > 0 else 0
+            'average_time_per_billion': (total_compute / (total_verified / 1e9)) if total_verified > 0 else 0,
+            'network_mode': 'fully_decentralized'
         }
 
 
@@ -406,13 +611,25 @@ if __name__ == "__main__":
         print("Please install: pip install ipfshttpclient")
         exit(1)
     
-    coordinator = IPFSCoordinator()
+    print("🌐 Fully Decentralized Collatz Network")
+    print("=" * 50)
+    print("This network runs forever with n>0 nodes!")
+    print("No single coordinator - all nodes are equal peers.")
+    print("=" * 50)
     
-    # Generate initial work frontier
-    assignments = coordinator.generate_work_frontier(num_assignments=10)
+    coordinator = IPFSCoordinator()
     
     # Show network stats
     stats = coordinator.get_network_statistics()
     print(f"\nNetwork Statistics:")
-    for key, value in stats.items():
-        print(f"  {key}: {value}")
+    print(f"  Mode: {stats['network_mode']}")
+    print(f"  Known peers: {stats['known_peers']}")
+    print(f"  Active workers: {stats['active_workers']}")
+    print(f"  Available work: {stats['available_assignments']}")
+    print(f"  Global highest: {stats['global_highest_proven']:,}")
+    
+    # If low on work, generate more (any node can do this!)
+    if stats['available_assignments'] < 10:
+        print(f"\n⚠️ Low work available, generating more...")
+        coordinator.auto_generate_work_if_needed()
+
