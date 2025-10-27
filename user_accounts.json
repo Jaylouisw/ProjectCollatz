@@ -1,0 +1,15 @@
+{
+  "U3db9c86a5afbfb02": {
+    "username": "Jaylouisw",
+    "user_id": "U3db9c86a5afbfb02",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAPKSNO0duqEXYcwWYBHUx3x4Kc9Y+DHLN3zDUPDJoYNI=\n-----END PUBLIC KEY-----\n",
+    "registered_nodes": [
+      "12D3KooWDjRqMgxn1aLrabzPkrzviM1iqUbM1Vkrz5HWVyd611jD"
+    ],
+    "created_at": 1761591359.4917202,
+    "last_active": 1761592785.0627313,
+    "total_contributions": 0,
+    "total_ranges": 0,
+    "total_compute_hours": 0.0
+  }
+}

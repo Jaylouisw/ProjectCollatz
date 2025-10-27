@@ -1,7 +1,12 @@
 {
-    "work_multiplier": 1000,
-    "threads_per_block_multiplier": 11,
-    "blocks_per_sm": 4,
-    "batch_size_override": 22000000,
-    "cpu_workers": 8
+    "config": {
+        "work_multiplier": 950,
+        "threads_per_block_multiplier": 11,
+        "blocks_per_sm": 4,
+        "batch_size_override": 24142626,
+        "cpu_workers": 8
+    },
+    "num_gpus": 1,
+    "tuned_for_multi_gpu": false,
+    "last_updated": "2025-10-27T17:43:30.323838"
 }

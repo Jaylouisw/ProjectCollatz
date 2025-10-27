@@ -1,103 +1,474 @@
 #!/bin/bash
-# Collatz Network - Raspberry Pi Image Builder
-# Creates a Raspbian Lite image with Collatz Network pre-installed
-# Tested on: Raspberry Pi 3, 4, Zero 2 W
+# Collatz Network - Multi-Platform SBC Image Builder
+# Creates OS images with Collatz Network pre-installed for various Single Board Computers
+# Supports: Raspberry Pi (all models), Orange Pi, Rock Pi, Odroid, and other ARM SBCs
 
 set -e
 
+# Configuration arrays for different platforms
+# Note: Raspberry Pi 3 has 64-bit ARM CPU but ships with 32-bit OS by default
+# We provide both options: rpi3-arm64 (better performance) and rpi3-arm32 (compatibility)
+declare -A PLATFORMS=(
+    ["rpi4-arm64"]="2024-03-15-raspios-bookworm-arm64-lite"
+    ["rpi4-arm32"]="2024-03-15-raspios-bookworm-armhf-lite"
+    ["rpi3-arm64"]="2024-03-15-raspios-bookworm-arm64-lite"      # Pi 3 with 64-bit OS
+    ["rpi3-arm32"]="2024-03-15-raspios-bookworm-armhf-lite"      # Pi 3 with 32-bit OS
+    ["rpi-zero2"]="2024-03-15-raspios-bookworm-arm64-lite"
+    ["rpi-legacy"]="2024-03-15-raspios-bookworm-armhf-lite"      # Pi 1, 2, Zero (32-bit only)
+    ["ubuntu-arm64"]="ubuntu-22.04.3-preinstalled-server-arm64+raspi"
+    ["ubuntu-arm32"]="ubuntu-22.04.3-preinstalled-server-armhf+raspi"
+)
+
+declare -A DOWNLOAD_URLS=(
+    ["rpi4-arm64"]="https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-03-15/"
+    ["rpi4-arm32"]="https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2024-03-15/"
+    ["rpi3-arm64"]="https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-03-15/"
+    ["rpi3-arm32"]="https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2024-03-15/"
+    ["rpi-zero2"]="https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-2024-03-15/"
+    ["rpi-legacy"]="https://downloads.raspberrypi.com/raspios_lite_armhf/images/raspios_lite_armhf-2024-03-15/"
+    ["ubuntu-arm64"]="https://cdimage.ubuntu.com/ubuntu-server/releases/22.04/release/"
+    ["ubuntu-arm32"]="https://cdimage.ubuntu.com/ubuntu-server/releases/22.04/release/"
+)
+
+# Default configuration
+DEFAULT_PLATFORM="rpi4-arm64"
+WORK_DIR="./pi-build"
+DATE_STAMP=$(date +%Y%m%d)
+
+# Parse command line arguments
+PLATFORM="$DEFAULT_PLATFORM"
+BUILD_ALL=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --platform=*)
+            PLATFORM="${1#*=}"
+            shift
+            ;;
+        --all)
+            BUILD_ALL=true
+            shift
+            ;;
+        --help|-h)
+            echo "Usage: $0 [--platform=PLATFORM] [--all] [--help]"
+            echo ""
+            echo "Available platforms:"
+            echo "  rpi4-arm64    - Raspberry Pi 4, 400, CM4 (64-bit)"
+            echo "  rpi4-arm32    - Raspberry Pi 4, 400, CM4 (32-bit)"  
+            echo "  rpi3-arm64    - Raspberry Pi 3, 3B+ (64-bit)"
+            echo "  rpi3-arm32    - Raspberry Pi 3, 3B+ (32-bit)"
+            echo "  rpi-zero2     - Raspberry Pi Zero 2 W (64-bit)"
+            echo "  rpi-legacy    - Raspberry Pi 1, 2, Zero (32-bit)"
+            echo "  ubuntu-arm64  - Orange Pi, Rock Pi, Odroid (64-bit)"
+            echo "  ubuntu-arm32  - Older ARM32 SBCs"
+            echo ""
+            echo "Options:"
+            echo "  --platform=PLATFORM  Build for specific platform (default: $DEFAULT_PLATFORM)"
+            echo "  --all                Build for all supported platforms"
+            echo "  --help               Show this help message"
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
 echo "=========================================="
-echo "  Collatz Network - Pi Image Builder"
+echo "  Collatz Network - Multi-Platform Builder"
 echo "=========================================="
 echo
 
 # Check if running on Linux
 if [ "$(uname -s)" != "Linux" ]; then
-    echo "ERROR: This script must run on Linux"
+    echo "ERROR: This script must run on Linux (or in Docker)"
     exit 1
 fi
 
 # Check for required tools
-for cmd in wget unzip parted kpartx; do
-    if ! command -v $cmd &> /dev/null; then
+REQUIRED_TOOLS="wget unzip xz-utils parted kpartx e2fsprogs dosfstools sudo"
+for cmd in $REQUIRED_TOOLS; do
+    if ! command -v $cmd &> /dev/null && ! dpkg -l | grep -q "^ii.*$cmd"; then
         echo "ERROR: Required tool '$cmd' not found"
-        echo "Install with: sudo apt-get install $cmd"
+        echo "Install with: sudo apt-get install $REQUIRED_TOOLS"
         exit 1
     fi
 done
 
-# Configuration
-RASPBIAN_VERSION="2024-03-15"
-RASPBIAN_IMAGE="2024-03-15-raspios-bookworm-arm64-lite.img"
-RASPBIAN_ZIP="${RASPBIAN_IMAGE}.xz"
-RASPBIAN_URL="https://downloads.raspberrypi.com/raspios_lite_arm64/images/raspios_lite_arm64-${RASPBIAN_VERSION}/${RASPBIAN_ZIP}"
+# Function to build image for a specific platform
+build_platform_image() {
+    local platform=$1
+    local base_image="${PLATFORMS[$platform]}"
+    local download_url="${DOWNLOAD_URLS[$platform]}"
+    
+    echo "=========================================="
+    echo "Building for platform: $platform"
+    echo "Base image: $base_image"
+    echo "=========================================="
+    
+    # Create platform-specific work directory
+    local platform_dir="$WORK_DIR/$platform"
+    mkdir -p "$platform_dir"
+    cd "$platform_dir"
+    
+    # Determine file extension and download URL
+    local image_file=""
+    local zip_file=""
+    local full_url=""
+    
+    if [[ $base_image == *"raspios"* ]]; then
+        image_file="${base_image}.img"
+        zip_file="${base_image}.img.xz"
+        full_url="${download_url}${zip_file}"
+    elif [[ $base_image == *"ubuntu"* ]]; then
+        image_file="${base_image}.img"
+        zip_file="${base_image}.img.xz"
+        full_url="${download_url}${zip_file}"
+    fi
+    
+    # Download base image if needed
+    if [ ! -f "$image_file" ]; then
+        echo "Downloading $platform base image..."
+        if [ ! -f "$zip_file" ]; then
+            echo "Downloading from: $full_url"
+            wget "$full_url" -O "$zip_file" || {
+                echo "WARNING: Failed to download $zip_file, skipping $platform"
+                return 1
+            }
+        fi
+        
+        echo "Extracting $zip_file..."
+        if [[ $zip_file == *.xz ]]; then
+            unxz -k "$zip_file"
+        elif [[ $zip_file == *.gz ]]; then
+            gunzip -k "$zip_file"
+        fi
+    fi
+    
+    # Create output image name
+    local output_image="collatz-network-${platform}-${DATE_STAMP}.img"
+    
+    # Copy base image
+    echo "Creating custom image: $output_image"
+    cp "$image_file" "$output_image"
+    
+    # Expand image to add space for Collatz files
+    echo "Expanding image (adding 1GB)..."
+    dd if=/dev/zero bs=1M count=1024 >> "$output_image"
+    
+    # Set up loop device and resize partition
+    echo "Setting up loop device..."
+    local loop_device=$(sudo losetup -f --show "$output_image")
+    sudo kpartx -a "$loop_device"
+    
+    # Get partition names (handle different naming schemes)
+    local boot_part=""
+    local root_part=""
+    
+    # Try different partition naming schemes
+    if [ -e "/dev/mapper/$(basename ${loop_device})p1" ]; then
+        boot_part="/dev/mapper/$(basename ${loop_device})p1"
+        root_part="/dev/mapper/$(basename ${loop_device})p2"
+    elif [ -e "/dev/mapper/$(basename ${loop_device})1" ]; then
+        boot_part="/dev/mapper/$(basename ${loop_device})1"
+        root_part="/dev/mapper/$(basename ${loop_device})2"
+    else
+        echo "ERROR: Could not find partition mappings"
+        sudo kpartx -d "$loop_device"
+        sudo losetup -d "$loop_device"
+        return 1
+    fi
+    
+    # Resize partition table and filesystem
+    echo "Resizing partition..."
+    sudo parted "$output_image" resizepart 2 100% || true
+    
+    # Check and resize filesystem
+    sudo e2fsck -f "$root_part" || true
+    sudo resize2fs "$root_part"
+    
+    # Mount partitions
+    local mount_boot="./mount/boot"
+    local mount_root="./mount/root"
+    mkdir -p "$mount_boot" "$mount_root"
+    
+    sudo mount "$boot_part" "$mount_boot"
+    sudo mount "$root_part" "$mount_root"
+    
+    echo "✓ Image mounted for $platform"
+    
+    # Install Collatz Network
+    install_collatz_network "$platform" "$mount_boot" "$mount_root"
+    
+    # Cleanup
+    echo "Cleaning up mounts..."
+    sudo umount "$mount_boot" "$mount_root" || true
+    sudo kpartx -d "$loop_device"
+    sudo losetup -d "$loop_device"
+    
+    echo "✓ Completed build for $platform: $output_image"
+    echo "  Image location: $platform_dir/$output_image"
+    echo
+    
+    cd "$WORK_DIR"
+}
 
-OUTPUT_IMAGE="collatz-network-pi-${RASPBIAN_VERSION}.img"
-WORK_DIR="./pi-build"
+# Function to install Collatz Network on mounted filesystem
+install_collatz_network() {
+    local platform=$1
+    local mount_boot=$2
+    local mount_root=$3
+    
+    echo "Installing Collatz Network for $platform..."
+    
+    # Enable SSH
+    echo "  - Enabling SSH..."
+    sudo touch "$mount_boot/ssh"
+    
+    # Configure Wi-Fi template
+    echo "  - Creating Wi-Fi configuration template..."
+    sudo tee "$mount_boot/wpa_supplicant.conf.template" > /dev/null << 'EOF'
+country=US
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+
+# Example network configuration - edit with your details
+network={
+    ssid="YOUR_WIFI_SSID"
+    psk="YOUR_WIFI_PASSWORD"
+    key_mgmt=WPA-PSK
+}
+EOF
+    
+    # Create user directory
+    local user_home=""
+    if [[ $platform == *"ubuntu"* ]]; then
+        user_home="$mount_root/home/ubuntu"
+        sudo mkdir -p "$user_home"
+    else
+        user_home="$mount_root/home/pi" 
+        sudo mkdir -p "$user_home"
+    fi
+    
+    # Clone Collatz Network
+    echo "  - Installing Collatz Network..."
+    sudo git clone /workspace "$user_home/collatz-network" || {
+        echo "    Copying files manually..."
+        sudo mkdir -p "$user_home/collatz-network"
+        sudo cp -r /workspace/* "$user_home/collatz-network/" 2>/dev/null || true
+    }
+    
+    # Set ownership
+    if [[ $platform == *"ubuntu"* ]]; then
+        sudo chown -R 1000:1000 "$user_home"
+    else
+        sudo chown -R 1000:1000 "$user_home"  # pi user UID typically 1000
+    fi
+    
+    # Install Python dependencies script
+    echo "  - Creating dependency installation script..."
+    sudo tee "$user_home/collatz-network/install-deps.sh" > /dev/null << 'EOF'
+#!/bin/bash
+set -e
+
+echo "Installing Collatz Network dependencies..."
+
+# Update system
+sudo apt-get update
+sudo apt-get install -y python3 python3-pip git curl
+
+# Install Python dependencies
+cd /home/$(whoami)/collatz-network
+pip3 install --user -r requirements_distributed.txt
+
+# Install IPFS
+echo "Installing IPFS..."
+cd /tmp
+IPFS_VERSION="v0.31.0"
+ARCH=$(uname -m)
+
+if [[ $ARCH == "aarch64" ]]; then
+    IPFS_ARCH="arm64"
+elif [[ $ARCH == "armv7l" ]]; then
+    IPFS_ARCH="arm"
+else
+    IPFS_ARCH="amd64"
+fi
+
+wget "https://dist.ipfs.tech/kubo/${IPFS_VERSION}/kubo_${IPFS_VERSION}_linux-${IPFS_ARCH}.tar.gz"
+tar -xzf "kubo_${IPFS_VERSION}_linux-${IPFS_ARCH}.tar.gz"
+sudo ./kubo/install.sh
+
+# Initialize IPFS
+ipfs init
+
+echo "✓ Collatz Network dependencies installed!"
+echo "Run 'python3 network_launcher.py' to start"
+EOF
+    
+    sudo chmod +x "$user_home/collatz-network/install-deps.sh"
+    
+    # Create systemd service for auto-start
+    echo "  - Creating systemd service..."
+    sudo tee "$mount_root/etc/systemd/system/collatz-network.service" > /dev/null << EOF
+[Unit]
+Description=Collatz Distributed Network Worker
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=$(if [[ $platform == *"ubuntu"* ]]; then echo "ubuntu"; else echo "pi"; fi)
+WorkingDirectory=$user_home/collatz-network
+ExecStart=/usr/bin/python3 network_launcher.py
+Restart=always
+RestartSec=10
+Environment=PATH=/usr/bin:/usr/local/bin
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    
+    # Create first-boot setup script
+    echo "  - Creating first-boot setup..."
+    sudo tee "$mount_root/etc/rc.local" > /dev/null << 'EOF'
+#!/bin/sh -e
+#
+# This script runs on first boot to set up Collatz Network
+
+if [ -f /home/*/collatz-network/install-deps.sh ] && [ ! -f /var/lib/collatz-setup-done ]; then
+    echo "Setting up Collatz Network on first boot..."
+    
+    # Find the user home directory
+    USER_HOME=$(find /home -maxdepth 1 -type d -name "*" | grep -v "^/home$" | head -1)
+    
+    if [ -n "$USER_HOME" ]; then
+        cd "$USER_HOME/collatz-network"
+        sudo -u $(basename "$USER_HOME") ./install-deps.sh
+        
+        # Mark setup as complete
+        touch /var/lib/collatz-setup-done
+        
+        echo "✓ Collatz Network setup complete!"
+        echo "Access via SSH and run: cd ~/collatz-network && python3 network_launcher.py"
+    fi
+fi
+
+exit 0
+EOF
+    
+    sudo chmod +x "$mount_root/etc/rc.local"
+    
+    # Create README for users
+    sudo tee "$user_home/README-COLLATZ.txt" > /dev/null << 'EOF'
+Collatz Distributed Network - Pre-installed Image
+
+This image comes with the Collatz Network pre-installed and ready to use.
+
+Quick Start:
+1. Boot your device and wait for first-time setup (may take 5-10 minutes)
+2. Connect via SSH (user: pi/ubuntu, default password: raspberry/ubuntu)  
+3. Run: cd ~/collatz-network && python3 network_launcher.py
+4. Create an account (option 4) then start mining (option 1)
+
+Network Info:
+- The network searches for counterexamples to the Collatz Conjecture
+- Your device will contribute computational power to the distributed search
+- All results are verified and stored on IPFS for transparency
+- Join thousands of other nodes in this mathematical quest!
+
+Configuration:
+- Edit wpa_supplicant.conf in /boot for Wi-Fi setup
+- SSH is enabled by default
+- IPFS and Python dependencies install automatically on first boot
+
+Support: https://github.com/Jaylouisw/ProjectCollatz
+EOF
+    
+    echo "  ✓ Collatz Network installation complete for $platform"
+}
 
 # Create work directory
 mkdir -p "$WORK_DIR"
 cd "$WORK_DIR"
 
-# Download Raspbian if needed
-if [ ! -f "$RASPBIAN_IMAGE" ]; then
-    echo "Downloading Raspbian Lite..."
-    if [ ! -f "$RASPBIAN_ZIP" ]; then
-        wget "$RASPBIAN_URL" -O "$RASPBIAN_ZIP"
+# Main execution logic
+if [ "$BUILD_ALL" = true ]; then
+    echo "Building images for ALL supported platforms..."
+    echo
+    
+    failed_builds=()
+    successful_builds=()
+    
+    for platform in "${!PLATFORMS[@]}"; do
+        if build_platform_image "$platform"; then
+            successful_builds+=("$platform")
+        else
+            failed_builds+=("$platform")
+        fi
+    done
+    
+    # Final summary
+    echo "=========================================="
+    echo "  Build Summary"
+    echo "=========================================="
+    echo
+    echo "Successful builds (${#successful_builds[@]}):"
+    for platform in "${successful_builds[@]}"; do
+        echo "  ✓ $platform"
+        # Find and list the output file
+        output_file=$(find "$WORK_DIR/$platform" -name "collatz-network-${platform}-*.img" 2>/dev/null | head -1)
+        if [ -n "$output_file" ]; then
+            echo "    → $(basename "$output_file")"
+        fi
+    done
+    
+    if [ ${#failed_builds[@]} -gt 0 ]; then
+        echo
+        echo "Failed builds (${#failed_builds[@]}):"
+        for platform in "${failed_builds[@]}"; do
+            echo "  ✗ $platform"
+        done
     fi
     
-    echo "Extracting image..."
-    unxz -k "$RASPBIAN_ZIP"
+else
+    # Build single platform
+    if [[ -z "${PLATFORMS[$PLATFORM]}" ]]; then
+        echo "ERROR: Unknown platform '$PLATFORM'"
+        echo "Available platforms: ${!PLATFORMS[@]}"
+        exit 1
+    fi
+    
+    build_platform_image "$PLATFORM"
 fi
 
-# Copy base image
-echo "Creating custom image..."
-cp "$RASPBIAN_IMAGE" "$OUTPUT_IMAGE"
-
-# Expand image to add our files
-echo "Expanding image..."
-dd if=/dev/zero bs=1M count=1024 >> "$OUTPUT_IMAGE"
-
-# Resize partition
-echo "Resizing partition..."
-sudo parted "$OUTPUT_IMAGE" resizepart 2 100%
-
-# Mount image
-echo "Mounting image..."
-LOOP_DEVICE=$(sudo losetup -f --show "$OUTPUT_IMAGE")
-sudo kpartx -a "$LOOP_DEVICE"
-
-# Get partition names
-BOOT_PART="/dev/mapper/$(basename ${LOOP_DEVICE})p1"
-ROOT_PART="/dev/mapper/$(basename ${LOOP_DEVICE})p2"
-
-# Resize filesystem
-sudo e2fsck -f "$ROOT_PART" || true
-sudo resize2fs "$ROOT_PART"
-
-# Mount partitions
-MOUNT_BOOT="./mount/boot"
-MOUNT_ROOT="./mount/root"
-mkdir -p "$MOUNT_BOOT" "$MOUNT_ROOT"
-
-sudo mount "$BOOT_PART" "$MOUNT_BOOT"
-sudo mount "$ROOT_PART" "$MOUNT_ROOT"
-
-echo "✓ Image mounted"
 echo
-
-# Enable SSH
-echo "Enabling SSH..."
-sudo touch "$MOUNT_BOOT/ssh"
-
-# Configure Wi-Fi (optional - user can configure later)
-echo "Creating Wi-Fi configuration template..."
-cat > wpa_supplicant.conf.template << 'EOF'
-country=US
-ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
-update_config=1
-
-network={
-    ssid="YOUR_WIFI_SSID"
+echo "=========================================="
+echo "  Multi-Platform Build Complete!"
+echo "=========================================="
+echo
+echo "Images are located in: $WORK_DIR/<platform>/"
+echo
+echo "To write to SD card (replace /dev/sdX):"
+echo "  xzcat <image_file> | sudo dd of=/dev/sdX bs=4M status=progress"
+echo
+echo "Or use Etcher: https://www.balena.io/etcher/"
+echo
+echo "Supported devices by platform:"
+echo "  rpi4-arm64:   Raspberry Pi 4, Pi 400, CM4 (64-bit)"
+echo "  rpi4-arm32:   Raspberry Pi 4, Pi 400, CM4 (32-bit)" 
+echo "  rpi3-arm64:   Raspberry Pi 3, 3A+, 3B+ (64-bit)"
+echo "  rpi3-arm32:   Raspberry Pi 3, 3A+, 3B+ (32-bit)" 
+echo "  rpi-zero2:    Raspberry Pi Zero 2 W (64-bit)"
+echo "  rpi-legacy:   Raspberry Pi 1, 2, Zero (32-bit only)"
+echo "  ubuntu-arm64: Orange Pi, Rock Pi, Odroid (64-bit)"
+echo "  ubuntu-arm32: Older ARM32 SBCs"
+echo
+EOF
+    
+    echo "  ✓ Collatz Network installation complete for $platform"
+}
     psk="YOUR_WIFI_PASSWORD"
     key_mgmt=WPA-PSK
 }

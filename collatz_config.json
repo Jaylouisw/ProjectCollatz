@@ -1,7 +1,10 @@
 {
-  "highest_proven": 2361184764526092479999,
-  "total_tested": 789141839880000,
-  "total_runtime_seconds": 113938.66752195358,
+  "highest_proven": 2361183241434822606848,
+  "total_tested": 0,
+  "total_runtime_seconds": 0.0,
   "max_steps_ever": 0,
-  "last_updated": "2025-10-27T17:09:49.846072"
+  "last_updated": "2025-10-27T19:18:58.073845",
+  "production_mode": true,
+  "genesis_timestamp": "2025-10-27T19:18:58.073866",
+  "genesis_node": "node_1"
 }

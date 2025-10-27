@@ -1,0 +1,4 @@
+[console_scripts]
+collatz-account = user_account:main
+collatz-network = network_launcher:main
+collatz-worker = distributed_collatz:main

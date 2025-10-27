@@ -1,0 +1,20 @@
+{
+  "workers": {
+    "12D3KooWDjRqMgxn1aLrabzPkrzviM1iqUbM1Vkrz5HWVyd611jD": {
+      "worker_id": "12D3KooWDjRqMgxn1aLrabzPkrzviM1iqUbM1Vkrz5HWVyd611jD",
+      "user_id": "U3db9c86a5afbfb02",
+      "total_verifications": 0,
+      "correct_verifications": 0,
+      "incorrect_verifications": 0,
+      "total_numbers_checked": 0,
+      "total_compute_time": 0.0,
+      "trust_level": "UNTRUSTED",
+      "reputation_score": 0.0,
+      "first_seen": 1761592073.061513,
+      "last_active": 1761592073.0615132,
+      "consecutive_correct": 0,
+      "consecutive_incorrect": 0
+    }
+  },
+  "last_updated": 1761592073.0616307
+}

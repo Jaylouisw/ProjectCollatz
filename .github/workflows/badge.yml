@@ -1,0 +1,28 @@
+name: Generate Build Status Badge
+
+on:
+  workflow_run:
+    workflows: ["Build Multi-Platform SBC Images"]
+    types:
+      - completed
+
+jobs:
+  badge:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Generate status badge data
+        run: |
+          if [[ "${{ github.event.workflow_run.conclusion }}" == "success" ]]; then
+            echo "BADGE_MESSAGE=passing" >> $GITHUB_ENV
+            echo "BADGE_COLOR=brightgreen" >> $GITHUB_ENV
+          else
+            echo "BADGE_MESSAGE=failing" >> $GITHUB_ENV
+            echo "BADGE_COLOR=red" >> $GITHUB_ENV
+          fi
+          
+      - name: Create badge URL
+        run: |
+          BADGE_URL="https://img.shields.io/badge/SBC%20Images-${BADGE_MESSAGE}-${BADGE_COLOR}"
+          echo "Badge URL: $BADGE_URL"
+          echo "Add to README: ![SBC Images]($BADGE_URL)"

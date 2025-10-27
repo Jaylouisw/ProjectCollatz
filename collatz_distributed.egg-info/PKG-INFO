@@ -1,3 +1,52 @@
+Metadata-Version: 2.4
+Name: collatz-distributed
+Version: 1.0.0
+Summary: Distributed verification network for the Collatz Conjecture
+Home-page: https://github.com/Jaylouisw/ProjectCollatz
+Author: Jaylouisw
+Author-email: wenden.jason@gmail.com
+Project-URL: Bug Reports, https://github.com/Jaylouisw/ProjectCollatz/issues
+Project-URL: Source, https://github.com/Jaylouisw/ProjectCollatz
+Project-URL: Documentation, https://github.com/Jaylouisw/ProjectCollatz#readme
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: Topic :: Scientific/Engineering :: Mathematics
+Classifier: License :: Other/Proprietary License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: ipfshttpclient>=0.8.0a2
+Requires-Dist: cryptography>=41.0.0
+Requires-Dist: psutil>=5.9.0
+Requires-Dist: numpy>=1.24.0
+Provides-Extra: gpu
+Requires-Dist: cupy-cuda12x>=12.0.0; extra == "gpu"
+Provides-Extra: gpu-cuda11
+Requires-Dist: cupy-cuda11x>=11.0.0; extra == "gpu-cuda11"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: black>=23.0.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: project-url
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
 # Collatz Distributed Network
 
 **Join the global effort to solve the Collatz Conjecture!**
@@ -24,29 +73,10 @@ docker pull jaylouisw/collatz-network:latest
 docker run -it jaylouisw/collatz-network
 ```
 
-### Raspberry Pi & SBCs:
-Download pre-built images from [Releases](https://github.com/Jaylouisw/ProjectCollatz/releases)
+### Raspberry Pi:
+Download pre-built image from [Releases](https://github.com/Jaylouisw/ProjectCollatz/releases)
 
 **→ See [DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md) for complete installation guide!**
-
-## 📱 Pre-Built SBC Images ![SBC Images](https://img.shields.io/badge/SBC%20Images-automated-brightgreen)
-
-**Ready-to-use images** for Single Board Computers with Collatz Network pre-installed:
-
-- **🍓 Raspberry Pi** (all models with both 32-bit and 64-bit OS options where supported)
-- **🟠 Orange Pi** (64-bit and 32-bit ARM variants) 
-- **🪨 Rock Pi** (ARM64 and ARM32 models)
-- **⚡ Odroid** (ARM-based variants)
-- **🔧 Any ARM SBC** with Ubuntu support
-
-**🔄 Auto-Updated:** New images are automatically built on every release using GitHub Actions.
-
-**📋 Quick Setup:**
-1. **Download** appropriate image from [latest release](https://github.com/Jaylouisw/ProjectCollatz/releases/latest)
-2. **Flash** to SD card using [Etcher](https://www.balena.io/etcher/) 
-3. **Boot** and wait for auto-setup (5-10 minutes)
-4. **SSH** in and run: `cd ~/collatz-network && python3 network_launcher.py`
-5. **Join** the network: Create account → Start worker → Contribute computing power!
 
 ---
 

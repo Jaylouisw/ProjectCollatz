@@ -1,0 +1,86 @@
+name: Update Download Links
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-readme:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Update README with latest release links
+        run: |
+          RELEASE_TAG="${{ github.event.release.tag_name }}"
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/$RELEASE_TAG"
+          
+          # Create download section for README
+          cat > download_section.md << EOF
+          ## 📱 Pre-Built SBC Images
+          
+          Ready-to-use images for Single Board Computers with Collatz Network pre-installed:
+          
+          ### Latest Release: [$RELEASE_TAG]($RELEASE_URL)
+          
+          | Device | Architecture | Download |
+          |--------|-------------|----------|
+          | Raspberry Pi 4/400/CM4 | 64-bit ARM | [📥 Download](https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/collatz-network-rpi4-arm64-$RELEASE_TAG.img.xz) |
+          | Raspberry Pi 4/400/CM4 | 32-bit ARM | [📥 Download](https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/collatz-network-rpi4-arm32-$RELEASE_TAG.img.xz) |
+          | Raspberry Pi Zero 2 W | 64-bit ARM | [📥 Download](https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/collatz-network-rpi-zero2-$RELEASE_TAG.img.xz) |
+          | Raspberry Pi 1/2/3/Zero | 32-bit ARM | [📥 Download](https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/collatz-network-rpi-legacy-$RELEASE_TAG.img.xz) |
+          | Orange Pi, Rock Pi (newer) | 64-bit ARM | [📥 Download](https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/collatz-network-ubuntu-arm64-$RELEASE_TAG.img.xz) |
+          | Orange Pi, Rock Pi (older) | 32-bit ARM | [📥 Download](https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/collatz-network-ubuntu-arm32-$RELEASE_TAG.img.xz) |
+          
+          **📋 Installation:** 
+          1. Download appropriate image for your device
+          2. Verify with [checksums](https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/ALL-CHECKSUMS.sha256)  
+          3. Flash to SD card using [Etcher](https://www.balena.io/etcher/)
+          4. Boot and wait for setup (5-10 min)
+          5. SSH in: \`cd ~/collatz-network && python3 network_launcher.py\`
+          
+          **📖 Full Guide:** [Installation Guide](https://github.com/${{ github.repository }}/releases/download/$RELEASE_TAG/INSTALLATION-GUIDE.md)
+          
+          EOF
+          
+          # Update README.md if it exists
+          if [ -f README.md ]; then
+            # Remove existing download section if present
+            sed -i '/## 📱 Pre-Built SBC Images/,/^$/d' README.md
+            
+            # Insert new download section after the main description
+            # Look for a good insertion point (after overview, before installation)
+            if grep -q "## Installation" README.md; then
+              sed -i '/## Installation/i\\' README.md
+              sed -i '/## Installation/i\\' README.md
+              cat download_section.md | sed -i '/## Installation/r /dev/stdin' README.md
+            elif grep -q "## Usage" README.md; then
+              sed -i '/## Usage/i\\' README.md
+              sed -i '/## Usage/i\\' README.md  
+              cat download_section.md | sed -i '/## Usage/r /dev/stdin' README.md
+            else
+              # Append to end if no good insertion point found
+              echo "" >> README.md
+              cat download_section.md >> README.md
+            fi
+            
+            echo "✓ Updated README.md with download links"
+          fi
+          
+      - name: Commit changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          if git diff --quiet; then
+            echo "No changes to commit"
+          else
+            git add README.md
+            git commit -m "📱 Update SBC image download links for ${{ github.event.release.tag_name }}"
+            git push
+            echo "✓ Committed README updates"
+          fi
