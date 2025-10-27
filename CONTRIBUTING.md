@@ -23,10 +23,9 @@ We welcome benchmark results from **any hardware** - GPU or CPU!
    - One benchmark file per pull request
 
 **For best results:**
-- Run `python launcher.py` first to optimize your system
-- Let the auto-tuner complete (GPU mode only)
-- Then run `python benchmark.py` for accurate results
-- CPU-only mode doesn't require optimization
+- Join the distributed network: `python network_launcher.py`
+- Run verification for at least 24 hours
+- Export your contribution stats for the benchmark
 
 **What hardware is useful?**
 - **Any CUDA GPU** (GTX 1060 to H100 - all data points help!)

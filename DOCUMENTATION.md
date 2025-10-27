@@ -1,41 +1,32 @@
 # Documentation Index
 
-Complete guide to all Collatz Engine documentation.
+Complete guide to Collatz Distributed Network documentation.
 
 ## Getting Started
 
-📘 **[QUICK_START.md](QUICK_START.md)** - Start here!
-- First-time setup
-- Common workflows  
-- Troubleshooting quick fixes
-- Understanding output
-- Timeline expectations
+📘 **[DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md)** - Start here!
+- One-command installation
+- Quick start guide
+- User account setup
+- Docker deployment
+- Raspberry Pi setup
 
 📗 **[README.md](README.md)** - Project overview
-- Features and performance
-- Installation instructions
-- Usage options (launcher, direct, benchmark)
-- How it works (architecture)
-- Configuration files
-- **Technical Optimizations** - Applied and avoided optimizations with justifications
+- Features and architecture
+- Platform support
+- How to contribute
+- FAQ
 
-## Technical Documentation
+🚀 **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment
+- Installation methods for all platforms
+- Docker and Kubernetes
+- Raspberry Pi images
+- Multi-node setup
+- Cloud deployment
 
-⚙️ **[KERNEL_OPTIMIZATION_NOTES.md](KERNEL_OPTIMIZATION_NOTES.md)** - Deep dive into optimizations
-- GPU kernel improvements (branchless operations)
-- Why SIMD doesn't work for Collatz
-- Why Tensor Cores aren't applicable
-- Reddit community feedback analysis
-- Performance benchmarks and trade-offs
+## Distributed Network
 
-🔬 **[simd_collatz.py](simd_collatz.py)** - CPU SIMD proof-of-concept
-- NumPy vectorization attempt
-- Benchmark results (2.3x slower than scalar!)
-- Why SIMD doesn't help Collatz verification
-
-## Distributed Network (NEW!)
-
-🌐 **[DISTRIBUTED.md](DISTRIBUTED.md)** - **Complete distributed verification guide**
+🌐 **[DISTRIBUTED.md](DISTRIBUTED.md)** - Complete distributed verification guide
 - **Architecture:** Decentralized coordination via IPFS
 - **Security Model:** Ed25519 signatures, Byzantine fault tolerance
 - **Trust System:** Worker reputation and consensus requirements
@@ -81,12 +72,6 @@ pip install -r requirements_distributed.txt
 python distributed_collatz.py
 ```
 
-🔬 **[simd_collatz.py](simd_collatz.py)** - SIMD investigation proof-of-concept
-- NumPy vectorization attempt
-- Why it's 2x slower than scalar
-- Benchmark results
-- Lessons learned
-
 ## Troubleshooting & Support
 
 🔧 **[ERROR_HANDLING.md](ERROR_HANDLING.md)** - Complete troubleshooting guide
@@ -99,7 +84,6 @@ python distributed_collatz.py
 🩺 **Run Diagnostics:**
 ```bash
 python run_diagnostics.py
-python launcher.py --diagnostics
 ```
 
 ## Contributing
@@ -129,53 +113,40 @@ python launcher.py --diagnostics
 
 ### Main Scripts
 
-- **`CollatzEngine.py`** - Main verification engine
-  - Multi-GPU mode (automatically detects all GPUs)
-  - GPU hybrid mode (CUDA + CPU workers)
-  - CPU-only mode (pure multiprocessing)
-  - Command-line: `python CollatzEngine.py [gpu|cpu]`
+- **`network_launcher.py`** - Distributed network launcher
+  - Start coordinator or worker node
+  - Manage IPFS connections
+  - Monitor network statistics
+  - Command-line: `python network_launcher.py`
 
-- **`auto_tuner.py`** - GPU optimization (GPU mode only)
-  - Multi-GPU support (heterogeneous configurations)
-  - Stage 1: Binary search
-  - Stage 2: Fine-tuning
-  - Stage 3: Progressive refinement
-  - Auto-resume on interrupt
-  - Command-line: `python auto_tuner.py [--auto-resume]`
+- **`distributed_collatz.py`** - Worker node implementation
+  - Connects to IPFS network
+  - Receives work assignments
+  - Submits verification results
+  - Earns credits for contributions
+  - Command-line: `python distributed_collatz.py`
 
-- **`launcher.py`** - Unified launcher
-  - Intelligent optimization management
-  - Split-screen display
-  - Pre-flight system checks
-  - Command-line: `python launcher.py [--diagnostics]`
-
-- **`benchmark.py`** - Performance testing
-  - Auto-detects mode (GPU/CPU)
-  - Collects system specs
-  - Records optimization status
-  - Command-line: `python benchmark.py`
+- **`ipfs_coordinator.py`** - Network coordinator
+  - Manages work distribution
+  - Tracks worker contributions
+  - Maintains global leaderboard
+  - Handles result validation
 
 - **`run_diagnostics.py`** - System health check
   - Hardware verification
   - Library checks
+  - IPFS connectivity
   - Permission validation
   - Config file validation
   - Command-line: `python run_diagnostics.py`
 
 ### Support Modules
 
-- **`optimization_state.py`** - Optimization state management
-  - Hardware fingerprinting (SHA256)
-  - Completion tracking
-  - Hardware change detection
-  - Benchmark status
-
 - **`error_handler.py`** - Error handling & logging
   - Centralized error logger
   - System diagnostics
   - Hardware checks
   - Config validation
-  - Safe CuPy import
 
 - **`contribution_tracker.py`** - Contribution tracking
   - User profiles
@@ -246,59 +217,40 @@ python launcher.py
 ```
 Skips optimization if hardware unchanged.
 
-### CPU-Only Mode
-```bash
-python CollatzEngine.py cpu
-```
-No optimization needed.
-
-### Benchmark
-```bash
-python benchmark.py
-```
-Run after optimization for best results.
-
-### Diagnostics
-```bash
-python run_diagnostics.py
-```
-Check system health anytime.
-
-### Force Re-Optimization
-```bash
-# Delete state file
-del optimization_state.json  # Windows
-rm optimization_state.json   # Linux/Mac
-
-# Run launcher
-python launcher.py
-```
-
 ## File Structure
 
 ```
 CollatzEngine/
 ├── README.md                    # Project overview
-├── QUICK_START.md              # First-time user guide
+├── DEPLOYMENT.md               # Production deployment guide
+├── DISTRIBUTED.md              # Network architecture details
+├── DISTRIBUTED_QUICKREF.md     # Quick reference guide
 ├── ERROR_HANDLING.md           # Troubleshooting guide
 ├── CONTRIBUTING.md             # Contribution guidelines
+├── USER_ACCOUNTS.md            # Account system documentation
 ├── REDDIT_POST.md              # Community post template
 ├── LICENSE                      # CC BY-NC-SA 4.0
 │
-├── CollatzEngine.py            # Main engine
-├── auto_tuner.py               # GPU optimizer
-├── launcher.py                 # Unified launcher
-├── benchmark.py                # Performance testing
+├── network_launcher.py         # Network coordinator/worker
+├── distributed_collatz.py      # Worker node implementation
+├── ipfs_coordinator.py         # IPFS network coordination
 ├── run_diagnostics.py          # System check
 │
-├── optimization_state.py       # State management
+├── user_account.py             # User accounts & credits
+├── trust_system.py             # Peer trust management
+├── proof_verification.py       # Result validation
+├── contribution_tracker.py     # Contribution tracking
+├── counterexample_handler.py   # Counterexample validation
 ├── error_handler.py            # Error handling
-├── contribution_tracker.py     # Contribution system
+│
+├── install.sh                  # Linux/Mac installer
+├── install.ps1                 # Windows installer
+├── Dockerfile                  # Container image
+├── docker-compose.yml          # Multi-node setup
+├── docker-entrypoint.sh        # Container entrypoint
+├── build-pi-image.sh           # Raspberry Pi image builder
 │
 ├── collatz_config.json         # (auto-generated)
-├── gpu_tuning.json             # (auto-generated)
-├── autotuner_state.json        # (auto-generated)
-├── optimization_state.json     # (auto-generated)
 ├── error_log.json              # (auto-generated)
 ├── diagnostic_report.json      # (auto-generated)
 │
@@ -309,11 +261,12 @@ CollatzEngine/
 
 ## Getting Help
 
-1. **Quick fixes:** [QUICK_START.md](QUICK_START.md#troubleshooting-quick-fixes)
-2. **Detailed troubleshooting:** [ERROR_HANDLING.md](ERROR_HANDLING.md)
-3. **System diagnostics:** `python run_diagnostics.py`
-4. **Error history:** Check `error_log.json`
-5. **GitHub issues:** Include diagnostic report
+1. **Network setup:** [DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md)
+2. **Deployment:** [DEPLOYMENT.md](DEPLOYMENT.md)
+3. **Detailed troubleshooting:** [ERROR_HANDLING.md](ERROR_HANDLING.md)
+4. **System diagnostics:** `python run_diagnostics.py`
+5. **Error history:** Check `error_log.json`
+6. **GitHub issues:** Include diagnostic report
 
 ## What to Read
 

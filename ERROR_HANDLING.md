@@ -12,12 +12,6 @@ Run system diagnostics to check for issues:
 python run_diagnostics.py
 ```
 
-Or through the launcher:
-
-```bash
-python launcher.py --diagnostics
-```
-
 ## Error Logging
 
 All errors are automatically logged to `error_log.json` with full context including:
@@ -29,20 +23,26 @@ All errors are automatically logged to `error_log.json` with full context includ
 
 ## Common Issues & Solutions
 
-### GPU Not Available
+### IPFS Connection Failed
 
 **Symptoms:**
-- "CuPy not installed" message
-- "GPU initialization failed"
+- "Unable to connect to IPFS daemon"
+- "IPFS not running"
 
 **Solutions:**
-1. Install CuPy for your CUDA version:
+1. Install IPFS:
    ```bash
-   pip install cupy-cuda12x  # For CUDA 12.x
-   pip install cupy-cuda11x  # For CUDA 11.x
+   # Linux/Mac: Use install.sh
+   curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/main/install.sh | bash
+   
+   # Windows: Use install.ps1
+   iwr -useb https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/main/install.ps1 | iex
    ```
-2. Update GPU drivers
-3. Use CPU mode instead: `python CollatzEngine.py cpu`
+2. Start IPFS daemon manually:
+   ```bash
+   ipfs daemon
+   ```
+3. Check firewall settings (port 4001)
 
 ### Missing Libraries
 
