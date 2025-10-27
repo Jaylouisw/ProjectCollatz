@@ -61,7 +61,7 @@ Create the world's first **decentralized, cryptographically verified** system fo
 ### **Current Status**
 - **Version**: 1.0.1 (Future-Proof Release)
 - **Active Nodes**: Check the [Global Leaderboard](https://ipfs.io/ipns/collatz-leaderboard)
-- **Numbers Verified**: Billions and counting
+- **Numbers Verified**: Growing verification database
 - **Platforms**: Windows, Linux, macOS, Docker, Raspberry Pi
 
 ---
@@ -140,7 +140,7 @@ python future_proof_engine.py
 ## 📊 Network Statistics
 
 ### **Real-Time Data**
-- **[Global Leaderboard](https://ipfs.io/ipns/collatz-leaderboard)** - Top contributors
+- **[Network Statistics](https://ipfs.io/ipns/collatz-leaderboard)** - Contribution tracking
 - **[Network Status](Network-Status)** - Active nodes and performance
 - **[Progress Tracker](Progress-Tracker)** - Current verification frontier
 
@@ -165,7 +165,7 @@ python future_proof_engine.py
 - **[Community Discussion](https://github.com/Jaylouisw/ProjectCollatz/discussions)** - Help and ideas
 
 ### **Recognition**
-- **[Leaderboard](https://ipfs.io/ipns/collatz-leaderboard)** - Top contributors
+- **[Network Stats](https://ipfs.io/ipns/collatz-leaderboard)** - Contribution tracking
 - **[Credits](Credits)** - Acknowledgments and attributions
 - **[Hall of Fame](Hall-of-Fame)** - Special recognitions
 

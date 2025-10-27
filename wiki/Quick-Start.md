@@ -251,10 +251,10 @@ python network_launcher.py
 ```
 
 ### Web Dashboard
-Visit the [Global Leaderboard](https://ipfs.io/ipns/collatz-leaderboard) to see:
-- Top contributors worldwide
+Visit the [Network Dashboard](https://ipfs.io/ipns/collatz-leaderboard) to see:
 - Network statistics and health
-- Your ranking and progress
+- Contribution tracking
+- Your progress and ranking
 
 ---
 

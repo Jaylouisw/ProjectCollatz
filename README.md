@@ -1,52 +1,48 @@
-# Collatz Distributed Network v1.0.1# Collatz Distributed Network v1.0.1
+# Collatz Distributed Network v1.0.1
 
-
-
-[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)**Join the global effort to solve the Collatz Conjecture!**
-
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](https://github.com/Jaylouisw/ProjectCollatz)
+[![Future-Proof](https://img.shields.io/badge/future--proof-✓-brightgreen)](https://github.com/Jaylouisw/ProjectCollatz/wiki)
 
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)](https://github.com/Jaylouisw/ProjectCollatz)A fully decentralized verification network powered by IPFS, with cryptographic proofs, Byzantine fault tolerance, and permanent public records. **Now with complete future-proofing** - works on any OS and hardware configuration with graceful degradation and protocol independence. Contribute computing power from anywhere and help explore one of mathematics' greatest unsolved problems.
+**Join the effort to solve the Collatz Conjecture!**
 
-[![Future-Proof](https://img.shields.io/badge/future--proof-✓-brightgreen)](https://github.com/Jaylouisw/ProjectCollatz/wiki/Future-Proofing)
+A fully decentralized verification network powered by IPFS, with cryptographic proofs, Byzantine fault tolerance, and permanent public records. **Now with complete future-proofing** - works on any OS and hardware configuration with graceful degradation and protocol independence. Contribute computing power and help explore one of mathematics' greatest unsolved problems.
 
-📚 **Get Started:** [DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md) | **Full Documentation:** [DISTRIBUTED.md](DISTRIBUTED.md) | **Deployment:** [DEPLOYMENT.md](DEPLOYMENT.md)
+📚 **[Get Started](#quick-start)** | **[Wiki Documentation](https://github.com/Jaylouisw/ProjectCollatz/wiki)** | **[Architecture](#architecture)** | **[Installation](#installation)**
 
-**Join the global effort to solve the Collatz Conjecture!**
+---
 
 ## 🚀 One-Command Install
 
-A fully decentralized verification network with cryptographic proofs, Byzantine fault tolerance, and complete future-proofing. **Works on any OS and hardware configuration** with automatic adaptation and graceful degradation.
-
 ### Windows (PowerShell):
-
-📚 **[Get Started](#quick-start)** | **[Wiki Documentation](https://github.com/Jaylouisw/ProjectCollatz/wiki)** | **[Architecture](#architecture)** | **[Installation](#installation)**```powershell
-
+```powershell
 iwr -useb https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.ps1 | iex
+```
 
----```
+### Linux / macOS:
+```bash
+curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
+```
 
+### Docker:
+```bash
+docker pull jaylouisw/collatz-network:latest
+docker run -it jaylouisw/collatz-network
+```
 
+---
 
-## 🎯 Choose Your Experience### Linux / macOS:
+## 🎯 Choose Your Experience
+
+### 🔮 **Future-Proof Engine** (Recommended)
+*Cross-platform, hardware-adaptive, protocol-independent*
 
 ```bash
-
-### 🔮 **Future-Proof Engine** (Recommended)curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
-
-*Cross-platform, hardware-adaptive, protocol-independent*```
-
-
-
-```bash### Docker:
-
-python future_proof_engine.py --info    # Check compatibility```bash
-
-python future_proof_engine.py --test    # Verify functionality  docker pull jaylouisw/collatz-network:latest
-
-python future_proof_engine.py          # Join networkdocker run -it jaylouisw/collatz-network
-
-``````
+python future_proof_engine.py --info    # Check compatibility
+python future_proof_engine.py --test    # Verify functionality  
+python future_proof_engine.py          # Join network
+```
 
 
 
@@ -168,7 +164,7 @@ python future_proof_engine.py --info- Raspberry Pi and Docker support
 
 python future_proof_engine.py --test- Automatic hardware optimization
 
-```- ~10 billion numbers/sec per GPU node
+```- GPU acceleration for compute-intensive verification
 
 
 
@@ -350,7 +346,7 @@ python future_proof_engine.py --local
 
 **GPU Acceleration:**| **Linux** | x64 | 3.8+ | ✅ IPFS | ✅ CPU/CUDA/ROCm | **SUPPORTED** |
 
-- ✅ **NVIDIA CUDA** - 10x-100x performance boost| **Linux** | ARM64 | 3.8+ | ✅ IPFS | ✅ CPU/GPU | **SUPPORTED** |
+- ✅ **NVIDIA CUDA** - Significant performance improvement| **Linux** | ARM64 | 3.8+ | ✅ IPFS | ✅ CPU/GPU | **SUPPORTED** |
 
 - 🔄 **AMD ROCm** - Infrastructure ready| **macOS** | Intel | 3.8+ | ✅ IPFS | ✅ CPU/Metal | **SUPPORTED** |
 
@@ -380,7 +376,7 @@ python future_proof_engine.py --local
 
 ### **Verification Rates****📦 Requirements:**
 
-- **CPU-only**: ~1 million numbers/second- Python 3.8+ (flexible version ranges)
+- **CPU-only**: Efficient verification on any hardware- Python 3.8+ (flexible version ranges)
 
 - **GPU (CUDA)**: ~10 billion numbers/second- 2GB RAM minimum (4GB+ recommended) 
 

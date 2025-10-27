@@ -298,9 +298,9 @@ def network_recovery():
 ```
 
 ### Performance Under Attack
-**Normal Operation**: 10,000+ ranges/second network-wide
-**Under 33% Byzantine nodes**: 7,000+ ranges/second  
-**Under 49% Byzantine nodes**: 3,000+ ranges/second
+**Normal Operation**: Network scales based on active participants
+**Under 33% Byzantine nodes**: Maintains performance with validation overhead
+**Under 49% Byzantine nodes**: Reduced throughput but continued operation
 **Above 50% Byzantine nodes**: Network halt (by design)
 
 ---

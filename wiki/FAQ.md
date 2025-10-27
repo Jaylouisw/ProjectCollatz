@@ -14,8 +14,8 @@ The conjecture states that **every** positive integer eventually reaches 1. Desp
 
 ### What is the Collatz Distributed Network?
 We're building the most comprehensive verification of the Collatz Conjecture ever attempted through distributed computing. Our network:
-- ✅ Verifies billions of integers using cryptographic proofs
-- ✅ Coordinates work across thousands of computers worldwide
+- ✅ Verifies integers using cryptographic proofs
+- ✅ Coordinates work across distributed computers
 - ✅ Maintains permanent, verifiable records of all computations
 - ✅ Provides a path toward mathematical proof or counterexample discovery
 
@@ -118,9 +118,9 @@ python network_launcher.py
 
 ### How fast should my computer be?
 **Performance Examples**:
-- Basic laptop: 1,000-10,000 integers/second
-- Gaming PC: 100,000-1,000,000 integers/second  
-- High-end GPU: 10,000,000+ integers/second
+- Basic laptop: Suitable for smaller verification ranges
+- Gaming PC: Good performance for regular contributions
+- High-end GPU: Excellent for large-scale verification
 
 **Your contribution matters regardless of speed!** Even slower computers help verify smaller ranges and contribute to network security.
 
@@ -209,10 +209,7 @@ You control your privacy level through configuration settings.
 ## 🌐 Network & Community
 
 ### How many people are participating?
-**Current Network**: 500+ active workers worldwide
-**Total Contributors**: 2,000+ people have participated
-**Countries**: 50+ countries represented
-**Verification Progress**: 500+ billion integers verified
+The network is designed to support distributed participation across multiple nodes. As the project grows, statistics will be maintained showing active workers, contributions, and verification progress.
 
 See live statistics at our **[Global Leaderboard](https://ipfs.io/ipns/collatz-leaderboard)**
 
