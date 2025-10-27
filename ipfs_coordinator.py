@@ -47,6 +47,7 @@ class WorkAssignment:
     created_at: float
     timeout_at: float  # Re-assign if not completed by this time
     priority: int = 1  # Higher priority = process first
+    creator_user_id: Optional[str] = None  # CRITICAL: Track who created this work to prevent self-verification
 
 @dataclass
 class VerificationProof:
@@ -511,14 +512,42 @@ class IPFSCoordinator:
             if needed <= 0:
                 continue
             
-            # Assign random workers
+            # Assign random workers with SECURITY CHECKS
             for _ in range(needed):
                 if not free_workers:
                     break  # No more workers available
                 
                 worker_id = free_workers.pop(0)
                 
-                # Assign worker to range
+                # 🚨 CRITICAL SECURITY CHECK: Prevent same-user verification
+                worker_user_id = self.available_workers.get(worker_id, {}).get('user_id')
+                
+                # Check if this worker's user already has a worker assigned to this range
+                user_already_assigned = False
+                if worker_user_id:
+                    for assigned_worker in assignment.assigned_workers:
+                        assigned_worker_user = self.available_workers.get(assigned_worker, {}).get('user_id')
+                        if assigned_worker_user == worker_user_id:
+                            user_already_assigned = True
+                            break
+                
+                # Skip if same user already assigned (enforce diversity)
+                if user_already_assigned:
+                    print(f"[IPFS] 🚫 Skipping worker {worker_id[:16]}... - user {worker_user_id} already has worker on this range")
+                    continue
+                
+                # Check against original creator (if tracked)
+                if assignment.creator_user_id and worker_user_id == assignment.creator_user_id:
+                    # Allow ONE worker from creator user, but only as fallback if needed
+                    creator_workers_count = sum(1 for w in assignment.assigned_workers 
+                                              if self.available_workers.get(w, {}).get('user_id') == assignment.creator_user_id)
+                    other_user_workers_count = len(assignment.assigned_workers) - creator_workers_count
+                    
+                    if creator_workers_count >= 1 or other_user_workers_count == 0:
+                        print(f"[IPFS] 🚫 Skipping creator's worker {worker_id[:16]}... - creator user {worker_user_id} limited to 1 worker or needs other users first")
+                        continue
+                
+                # Assign worker to range (passed security checks)
                 assignment.assigned_workers.append(worker_id)
                 self.worker_assignments[worker_id] = assignment.assignment_id
                 assignment.timeout_at = current_time + self.WORK_TIMEOUT_SECONDS
@@ -527,6 +556,8 @@ class IPFSCoordinator:
                     assignment.status = 'in_progress'
                 
                 assignments_made += 1
+                
+                print(f"[IPFS] ✅ SECURE ASSIGNMENT: Worker {worker_id[:16]}... (user {worker_user_id or 'unknown'}) -> Range {assignment.range_start:,}-{assignment.range_end:,}")
                 
                 print(f"[IPFS] 🎲 RANDOM ASSIGNMENT: Worker {worker_id[:16]}... -> Range {assignment.range_start:,}-{assignment.range_end:,}")
         

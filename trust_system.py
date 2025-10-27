@@ -55,6 +55,7 @@ class WorkerStats:
 class VerificationResult:
     """Result from a worker verification of a range."""
     worker_id: str
+    user_id: Optional[str]  # User who owns this worker - CRITICAL for preventing self-verification
     range_start: int
     range_end: int
     all_converged: bool
@@ -259,6 +260,11 @@ class TrustSystem:
         """
         Submit a verification result from a worker.
         Returns (consensus_reached, message)
+        
+        CRITICAL SECURITY RULES:
+        1. Workers CANNOT verify their own work 
+        2. At least ONE verification must be from a different user
+        3. Same-user workers can provide ONE verification as fallback only
         """
         # Register or update worker
         stats = self.register_worker(result.worker_id)
@@ -266,6 +272,10 @@ class TrustSystem:
         stats.total_verifications += 1
         stats.total_numbers_checked += result.numbers_checked
         stats.total_compute_time += result.compute_time
+        
+        # Set user_id in worker stats if provided
+        if result.user_id and not stats.user_id:
+            stats.user_id = result.user_id
         
         # Get or create consensus state for this range
         range_key = (result.range_start, result.range_end)
@@ -285,7 +295,41 @@ class TrustSystem:
         if any(c.worker_id == result.worker_id for c in consensus.confirmations):
             return False, "Worker already submitted verification for this range"
         
-        # Add to confirmations
+        # 🚨 CRITICAL SECURITY CHECK: Prevent self-verification
+        # Check if this is the ORIGINAL worker who did the computation
+        if len(consensus.confirmations) == 0:
+            # This is the first submission - the original worker
+            consensus.confirmations.append(result)
+            remaining = consensus.required_confirmations - len(consensus.confirmations)
+            return False, f"🔒 Original work submitted. Awaiting {remaining} independent verification(s) from OTHER workers"
+        
+        # 🚨 PREVENT SAME-WORKER VERIFICATION
+        if result.worker_id in [c.worker_id for c in consensus.confirmations]:
+            return False, "🚫 SECURITY VIOLATION: Worker cannot verify their own work"
+        
+        # 🚨 CHECK USER-LEVEL VERIFICATION RULES
+        original_user = consensus.confirmations[0].user_id
+        current_user = result.user_id
+        
+        # Count verifications by user
+        user_verification_count = {}
+        for conf in consensus.confirmations:
+            user_id = conf.user_id or "unknown"
+            user_verification_count[user_id] = user_verification_count.get(user_id, 0) + 1
+        
+        current_user_count = user_verification_count.get(current_user or "unknown", 0)
+        other_user_count = sum(count for user, count in user_verification_count.items() 
+                              if user != original_user)
+        
+        # Rule: At least ONE verification MUST be from a different user
+        if current_user == original_user and other_user_count == 0 and len(consensus.confirmations) >= 2:
+            return False, f"🚫 SECURITY RULE: At least ONE verification must be from a different user. Current user {current_user or 'unknown'} cannot provide second verification until another user verifies."
+        
+        # Rule: Same user can only provide ONE verification (as fallback)
+        if current_user == original_user and current_user_count >= 1:
+            return False, f"🚫 SECURITY RULE: User {current_user or 'unknown'} can only provide ONE verification per range"
+        
+        # Add to confirmations (passed security checks)
         consensus.confirmations.append(result)
         
         # Check for consensus
@@ -423,6 +467,7 @@ if __name__ == "__main__":
     # Simulate worker verifications
     result1 = VerificationResult(
         worker_id="QmWorker1",
+        user_id="user_example123",  # CRITICAL: Include user_id for security
         range_start=1000000,
         range_end=1001000,
         all_converged=True,

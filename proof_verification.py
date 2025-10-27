@@ -38,6 +38,7 @@ class SignedProof:
     """A cryptographically signed verification proof."""
     # Proof data
     worker_id: str
+    user_id: Optional[str]  # CRITICAL: User ID to prevent self-verification
     range_start: int
     range_end: int
     all_converged: bool
@@ -163,7 +164,8 @@ class ProofVerificationSystem:
             return False
     
     def create_signed_proof(self, private_key: ed25519.Ed25519PrivateKey,
-                           worker_id: str, range_start: int, range_end: int,
+                           worker_id: str, user_id: Optional[str],
+                           range_start: int, range_end: int,
                            all_converged: bool, numbers_checked: int,
                            max_steps: int, compute_time: float,
                            ipfs_cid: str) -> SignedProof:
@@ -197,6 +199,7 @@ class ProofVerificationSystem:
         # Create signed proof
         signed_proof = SignedProof(
             worker_id=worker_id,
+            user_id=user_id,  # CRITICAL: Include user_id for verification security
             range_start=range_start,
             range_end=range_end,
             all_converged=all_converged,
@@ -292,6 +295,7 @@ class ProofVerificationSystem:
         # Create VerificationResult for trust system
         verification = VerificationResult(
             worker_id=signed_proof.worker_id,
+            user_id=signed_proof.user_id,  # CRITICAL: Pass user_id for security checks
             range_start=signed_proof.range_start,
             range_end=signed_proof.range_end,
             all_converged=signed_proof.all_converged,
@@ -396,6 +400,7 @@ if __name__ == "__main__":
     signed_proof = verifier.create_signed_proof(
         private_key=private_key,
         worker_id=worker_id,
+        user_id="user_example123",  # CRITICAL: Include user_id
         range_start=1000000,
         range_end=1010000,
         all_converged=True,

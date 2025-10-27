@@ -238,6 +238,7 @@ class DistributedCollatzWorker:
             signed_proof = self.verifier.create_signed_proof(
                 private_key=self.private_key,
                 worker_id=self.worker_id,
+                user_id=self.user_id,  # CRITICAL: Include user_id to prevent self-verification
                 range_start=assignment.range_start,
                 range_end=assignment.range_end,
                 all_converged=all_converged,
