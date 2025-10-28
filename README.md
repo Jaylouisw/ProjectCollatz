@@ -42,217 +42,200 @@ docker run -it jaylouisw/collatz-network
 python future_proof_engine.py --info    # Check compatibility
 python future_proof_engine.py --test    # Verify functionality  
 python future_proof_engine.py          # Join network
-```
-
-
-
-**✅ Perfect for:** Any user, any platform, maximum compatibility### Raspberry Pi & SBCs:
-
-Download pre-built images from [Releases](https://github.com/Jaylouisw/ProjectCollatz/releases)
+**✅ Perfect for:** Any user, any platform, maximum compatibility
 
 ### 🌐 **Traditional Network Launcher**
+*Menu-driven interface for distributed network*
 
-*Menu-driven interface for distributed network***→ See [DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md) for complete installation guide!**
-
-
-
-```bash## 📱 Pre-Built SBC Images ![SBC Images](https://img.shields.io/badge/SBC%20Images-automated-brightgreen)
-
+```bash
 python network_launcher.py
+```
 
-```**Ready-to-use images** for Single Board Computers with Collatz Network pre-installed:
+**✅ Perfect for:** Interactive setup, account management, detailed control
 
+**→ See [DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md) for complete installation guide!**
 
-
-**✅ Perfect for:** Interactive setup, account management, detailed control- **🍓 Raspberry Pi** (all models with both 32-bit and 64-bit OS options where supported)
-
-- **🟠 Orange Pi** (64-bit and 32-bit ARM variants) 
-
-### ⚡ **Direct Worker Mode**- **🪨 Rock Pi** (ARM64 and ARM32 models)
-
-*Command-line worker for advanced users*- **⚡ Odroid** (ARM-based variants)
-
-- **🔧 Any ARM SBC** with Ubuntu support
+### ⚡ **Direct Worker Mode**
+*Command-line worker for advanced users*
 
 ```bash
-
-python distributed_collatz.py --user-key ./keys/username_private_key.pem**🔄 Auto-Updated:** New images are automatically built on every release using GitHub Actions.
-
+python distributed_collatz.py --user-key ./keys/username_private_key.pem
 ```
 
-**📋 Quick Setup:**
+**✅ Perfect for:** Automation, multiple nodes, headless deployment
 
-**✅ Perfect for:** Automation, multiple nodes, headless deployment1. **Download** appropriate image from [latest release](https://github.com/Jaylouisw/ProjectCollatz/releases/latest)
-
-2. **Flash** to SD card using [Etcher](https://www.balena.io/etcher/) 
-
-### 🖥️ **Legacy Single-Node**3. **Boot** and wait for auto-setup (5-10 minutes)
-
-*High-performance local verification*4. **SSH** in and run: `cd ~/collatz-network && python3 network_launcher.py`
-
-5. **Join** the network: Create account → Start worker → Contribute computing power!
+### 🖥️ **Legacy Single-Node**
+*High-performance local verification*
 
 ```bash
-
-python CollatzEngine.py---
-
+python CollatzEngine.py
 ```
 
-## Features
-
-**✅ Perfect for:** Local testing, GPU benchmarking, research
-
-**🌐 Fully Decentralized Network**
-
----- No central server - runs forever via IPFS peer-to-peer gossip
-
-- Network continues with n>0 active nodes
-
-## 🚀 Quick Start- Self-organizing work generation
-
-- Permanent public verification records
-
-### 1. **One-Command Install**
-
-**🔐 Cryptographic Security**
-
-**Windows (PowerShell):**- Ed25519 signatures prevent tampering
-
-```powershell- 3+ worker consensus required
-
-iwr -useb https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.ps1 | iex- Random work assignment prevents collusion
-
-```- Trust & reputation system with automatic bad-actor detection
-
-- Anti-self-verification prevents single-node attacks
-
-**Linux/macOS:**
-
-```bash**🔮 Future-Proof Architecture (NEW in v1.0.1)**
-
-curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash- **Protocol Independence**: IPFS now, libp2p ready, any future protocol
-
-```- **Hardware Abstraction**: CPU always works, GPU optional, future accelerators ready
-
-- **Cross-Platform**: Windows/Linux/macOS with automatic compatibility detection
-
-**Docker:**- **Dependency Flexibility**: Version ranges prevent breakage from updates
-
-```bash- **Graceful Degradation**: System works even with missing optional components
-
-docker pull jaylouisw/collatz-network:latest
-
-docker run -it jaylouisw/collatz-network**🎉 Community Features**
-
-```- User accounts with persistent identity
-
-- Global leaderboard on IPFS
-
-### 2. **Check System Compatibility**- Counterexample celebration with network voting
-
-```bash- Credit system for contributors
-
-python future_proof_engine.py --info- Raspberry Pi and Docker support
-
-```
-
-**⚡ High Performance**
-
-### 3. **Run Quick Test**- Multi-backend compute engine (CPU/CUDA/ROCm auto-selection)
-
-```bash- Multi-node horizontal scaling
-
-python future_proof_engine.py --test- Automatic hardware optimization
-
-```- GPU acceleration for compute-intensive verification
-
-
-
-### 4. **Start Contributing****→ See [DISTRIBUTED.md](DISTRIBUTED.md) for complete architecture details!**
-
-```bash
-
-python future_proof_engine.py---
-
-```
-
-## Quick Start
-
-**That's it!** The system automatically detects your hardware, selects optimal protocols, and joins the global network.
-
-### 1. Install (Choose One Method)
+**✅ Perfect for:** Single machine, maximum performance, local results
 
 ---
 
-**Windows:**
+## 📱 Pre-Built Images ![SBC Images](https://img.shields.io/badge/Multi--Platform-automated-brightgreen)
 
-## 🏗️ Architecture```powershell
+**Ready-to-use images** with Collatz Network pre-installed:
 
+### **SBC Images (ARM)**
+- **🍓 Raspberry Pi** (all models with both 32-bit and 64-bit OS options)
+- **🟠 Orange Pi** (64-bit and 32-bit ARM variants)
+- **🪨 Rock Pi** (ARM64 and ARM32 models)
+- **⚡ Odroid** (ARM-based variants)
+- **🔧 Any ARM SBC** with Ubuntu support
+
+### **USB Images (x86_64)**
+- **💻 Desktop USB** - Ubuntu Desktop with GUI for laptops/desktops
+- **🖥️ Server USB** - Ubuntu Server (headless) for dedicated nodes
+
+**🔄 Auto-Updated:** New images are automatically built on every release using GitHub Actions.
+
+### **📋 Quick Setup:**
+
+1. **Download** appropriate image from [latest release](https://github.com/Jaylouisw/ProjectCollatz/releases/latest)
+2. **Flash** to SD card (SBC) or USB drive (x86_64) using [Etcher](https://www.balena.io/etcher/)
+3. **Boot** and wait for auto-setup (5-10 minutes)
+4. **SSH** in and run: `cd ~/collatz-network && python3 network_launcher.py`
+5. **Join** the network: Create account → Start worker → Contribute computing power!
+
+---
+
+## 🚀 Quick Start
+
+### 1. **One-Command Install**
+
+**Windows (PowerShell):**
+```powershell
 iwr -useb https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.ps1 | iex
+```
 
-### **Layered Future-Proof Design**```
+**Linux/macOS:**
+```bash
+curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
+```
+
+**Docker:**
+```bash
+docker pull jaylouisw/collatz-network:latest
+docker run -it jaylouisw/collatz-network
+```
+
+## ✨ Features
+
+**🌐 Fully Decentralized Network**
+- No central server - runs forever via IPFS peer-to-peer gossip
+- Network continues with n>0 active nodes
+- Self-organizing work generation
+- Permanent public verification records
+
+**🔐 Cryptographic Security**
+- Ed25519 signatures prevent tampering
+- 3+ worker consensus required
+- Random work assignment prevents collusion
+- Trust & reputation system with automatic bad-actor detection
+- Anti-self-verification prevents single-node attacks
+
+**🔮 Future-Proof Architecture (NEW in v1.0.1)**
+- **Protocol Independence**: IPFS now, libp2p ready, any future protocol
+- **Hardware Abstraction**: CPU always works, GPU optional, future accelerators ready
+- **Cross-Platform**: Windows/Linux/macOS with automatic compatibility detection
+- **Dependency Flexibility**: Version ranges prevent breakage from updates
+- **Graceful Degradation**: System works even with missing optional components
+
+**🎉 Community Features**
+- User accounts with persistent identity
+- Global leaderboard on IPFS
+- Counterexample celebration with network voting
+- Credit system for contributors
+- Raspberry Pi and Docker support
+
+**⚡ High Performance**
+- Multi-backend compute engine (CPU/CUDA/ROCm auto-selection)
+- Multi-node horizontal scaling
+- Automatic hardware optimization
+- GPU acceleration for compute-intensive verification
+
+**→ See [DISTRIBUTED.md](DISTRIBUTED.md) for complete architecture details!**
+
+### 2. **Check System Compatibility**
+
+```bash
+python future_proof_engine.py --info
+```
+
+### 3. **Run Quick Test**
+
+```bash
+python future_proof_engine.py --test
+```
+
+### 4. **Start Contributing**
+
+```bash
+python future_proof_engine.py
+```
+
+**That's it!** The system automatically detects your hardware, selects optimal protocols, and joins the global network.
+
+---
+
+## 🏗️ Architecture
+
+### **Layered Future-Proof Design**
+
+```
 
 
 
-```**Linux / macOS:**
-
-┌─────────────────────────────────────────────────────────────────┐```bash
-
-│                    USER INTERFACES                             │curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
-
-├─────────────────┬─────────────────┬─────────────────┬───────────┤```
-
+┌─────────────────────────────────────────────────────────────────┐
+│                    USER INTERFACES                             │
+├─────────────────┬─────────────────┬─────────────────┬───────────┤
 │ Future-Proof    │ Network         │ Direct Worker   │ Legacy    │
-
-│ Engine          │ Launcher        │ Mode           │ Mode      │**Docker:**
-
-│ (Recommended)   │ (Interactive)   │ (Advanced)     │ (Local)   │```bash
-
-└─────────────────┴─────────────────┴─────────────────┴───────────┘docker pull jaylouisw/collatz-network:latest
-
-┌─────────────────────────────────────────────────────────────────┐docker run -it jaylouisw/collatz-network
-
-│                FUTURE-PROOFING ABSTRACTION LAYER               │```
-
+│ Engine          │ Launcher        │ Mode           │ Mode      │
+│ (Recommended)   │ (Interactive)   │ (Advanced)     │ (Local)   │
+└─────────────────┴─────────────────┴─────────────────┴───────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                FUTURE-PROOFING ABSTRACTION LAYER               │
 ├─────────────────┬─────────────────┬─────────────────────────────┤
-
-│ Network         │ Compute         │ Configuration               │**Raspberry Pi:**
-
-│ Transport       │ Engine          │ Manager                     │Download pre-built image from [Releases](https://github.com/Jaylouisw/ProjectCollatz/releases)
-
+│ Network         │ Compute         │ Configuration               │
+│ Transport       │ Engine          │ Manager                     │
 │                 │                 │                             │
-
-│ • IPFS (now)    │ • CPU (always)  │ • Schema validation         │### 2. Create User Account
-
+│ • IPFS (now)    │ • CPU (always)  │ • Schema validation         │
 │ • libp2p (ready)│ • CUDA (opt)    │ • Version migration         │
-
-│ • Future protos │ • ROCm (ready)  │ • Environment overrides     │```bash
-
-│ • Auto-select   │ • Auto-detect   │ • Forward compatibility     │python network_launcher.py
-
-└─────────────────┴─────────────────┴─────────────────────────────┘# Choose option 4: Create User Account
-
-┌─────────────────────────────────────────────────────────────────┐```
-
+│ • Future protos │ • ROCm (ready)  │ • Environment overrides     │
+│ • Auto-select   │ • Auto-detect   │ • Forward compatibility     │
+└─────────────────┴─────────────────┴─────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
 │                    DISTRIBUTED NETWORK CORE                    │
-
-├─────────────────┬─────────────────┬─────────────────┬───────────┤Your account gives you:
-
-│ IPFS            │ Trust &         │ Cryptographic   │ Work      │- ✅ Persistent identity across all your nodes
-
-│ Coordinator     │ Consensus       │ Verification    │ Engine    │- ✅ Recognition on the global leaderboard
-
-│                 │                 │                 │           │- ✅ Credit if you find a counterexample!
-
+├─────────────────┬─────────────────┬─────────────────┬───────────┤
+│ IPFS            │ Trust &         │ Cryptographic   │ Work      │
+│ Coordinator     │ Consensus       │ Verification    │ Engine    │
+│                 │                 │                 │           │
 │ • Work dispatch │ • Reputation    │ • Ed25519 sigs  │ • GPU     │
-
-│ • Progress sync │ • 3+ consensus  │ • Proof chains  │ • CPU     │### 3. Start Contributing
-
+│ • Progress sync │ • 3+ consensus  │ • Proof chains  │ • CPU     │
 │ • Node discovery│ • Bad actors    │ • Tamper-proof  │ • Ranges  │
+│ • Fault handling│ • Anti-self     │ • Public record │ • Results │
+└─────────────────┴─────────────────┴─────────────────┴───────────┘
+```
 
-│ • Fault handling│ • Anti-self     │ • Public record │ • Results │```bash
+### 2. **Create User Account**
 
-└─────────────────┴─────────────────┴─────────────────┴───────────┘python network_launcher.py
+```bash
+python network_launcher.py
+# Choose option 4: Create User Account
+```
+
+Your account gives you:
+- ✅ Persistent identity across all your nodes
+- ✅ Recognition on the global leaderboard
+- ✅ Credit if you find a counterexample!
+
+### 3. **Start Contributing**
+
+```bash
+python network_launcher.py
 
 ```# Choose option 1: Start Worker Node (with account)
 
@@ -443,10 +426,15 @@ python future_proof_engine.py --local
 3. **Cryptographic Integrity**If you prefer not to use the install scripts:
 
    - Ed25519 digital signatures
+   - Tamper-proof result chains
+   - Public verification on IPFS
 
-   - Tamper-proof result chains```bash
+## 📦 Manual Installation
 
-   - Public verification on IPFS# Install IPFS
+If you prefer not to use the install scripts:
+
+```bash
+# Install IPFS
 
 # Download from: https://docs.ipfs.tech/install/
 
@@ -490,11 +478,13 @@ Run multiple worker nodes under one account:
 
 ### **User Accounts**
 
-- **Persistent Identity**: Recognition across all your contributions```bash
+- **Persistent Identity**: Recognition across all your contributions
+- **Global Leaderboard**: Community rankings and statistics
+- **Credit System**: Attribution if you find a counterexample
 
-- **Global Leaderboard**: Community rankings and statistics# Terminal 1
-
-- **Credit System**: Attribution if you find a counterexamplepython distributed_collatz.py --user-key ./keys/user_alice_private.pem --name node1
+```bash
+# Terminal 1
+python distributed_collatz.py --user-key ./keys/user_alice_private.pem --name node1
 
 - **Multi-Node Support**: Run multiple workers under one account
 
@@ -503,44 +493,52 @@ Run multiple worker nodes under one account:
 ### **Network Statistics**python distributed_collatz.py --user-key ./keys/user_alice_private.pem --name node2
 
 - **Real-time Progress**: Current verification status
+- **Node Metrics**: Active workers, performance statistics
+- **Historical Data**: Long-term progress tracking
 
-- **Node Metrics**: Active workers, performance statistics# Terminal 3
-
-- **Historical Data**: Long-term progress trackingpython distributed_collatz.py --user-key ./keys/user_alice_private.pem --name node3
+# Terminal 3
+python distributed_collatz.py --user-key ./keys/user_alice_private.pem --name node3
 
 - **Public Records**: All verifications permanently stored```
 
 
 
-### **Counterexample Handling**All nodes contribute to your total statistics!
+All nodes contribute to your total statistics!
+
+### **Counterexample Handling**
 
 - **Automatic Detection**: Special handling for potential counterexamples
-
-- **Network Voting**: Community verification of findings### GPU Acceleration
-
+- **Network Voting**: Community verification of findings
 - **Credit Attribution**: Recognition for discoverers
+- **Historical Archive**: Permanent record of all findings
 
-- **Historical Archive**: Permanent record of all findingsFor 10x-100x speedup, install GPU support:
+---
+
+## ⚡ GPU Acceleration
+
+For 10x-100x speedup, install GPU support:
 
 
 
----```bash
-
+```bash
 # CUDA 12.x
+pip install cupy-cuda12x
 
-## 🐳 Deployment Optionspip install cupy-cuda12x
-
-
-
-### **Docker (Recommended for Servers)**# CUDA 11.x
-
-```bashpip install cupy-cuda11x
-
-# Quick start```
-
-docker run -it jaylouisw/collatz-network
+# CUDA 11.x
+pip install cupy-cuda11x
+```
 
 Then start workers normally - GPU will be auto-detected and used.
+
+---
+
+## 🐳 Deployment Options
+
+### **Docker (Recommended for Servers)**
+
+```bash
+# Quick start
+docker run -it jaylouisw/collatz-network
 
 # Production deployment
 
