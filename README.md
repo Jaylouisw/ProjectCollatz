@@ -7,11 +7,11 @@
 
 **ALPHA SOFTWARE - EDUCATIONAL/RESEARCH USE ONLY**
 
-This is an educational project exploring distributed systems through AI-assisted development. While core functionality works, this is **not production-ready** and has not undergone independent security audit. See the [wiki](../../wiki) for complete documentation.
+This is an educational project exploring distributed systems through AI-assisted development. While core functionality works, this is **not production-ready** and has not undergone independent security audit. See the [wiki](https://github.com/Jaylouisw/ProjectCollatz/wiki) for complete documentation.
 
 A distributed verification system exploring the Collatz Conjecture using IPFS peer-to-peer coordination. The project implements GPU-accelerated verification with cryptographic result signing.
 
-**[📚 Wiki](../../wiki)** | **[Quick Start](../../wiki/Quick-Start)** | **[Installation](../../wiki/Installation)** | **[Security](../../wiki/Security)**
+**[📚 Wiki](https://github.com/Jaylouisw/ProjectCollatz/wiki)** | **[Quick Start](https://github.com/Jaylouisw/ProjectCollatz/wiki/Quick-Start)** | **[Installation](https://github.com/Jaylouisw/ProjectCollatz/wiki/Installation)** | **[Security](https://github.com/Jaylouisw/ProjectCollatz/wiki/Security)**
 
 ---
 
@@ -419,22 +419,22 @@ The Collatz Conjecture (3n+1 problem) is an unsolved problem in mathematics. Thi
 
 ## Documentation
 
-Complete documentation available in the **[Project Wiki](../../wiki)**:
+Complete documentation available in the **[Project Wiki](https://github.com/Jaylouisw/ProjectCollatz/wiki)**:
 
-- **[Quick Start Guide](../../wiki/Quick-Start)** - Get running in 5 minutes
-- **[Installation Guide](../../wiki/Installation)** - Detailed setup for all platforms
-- **[User Guide](../../wiki/User-Guide)** - How to participate
-- **[Architecture](../../wiki/Architecture)** - Technical design
-- **[Security](../../wiki/Security)** - Trust and verification
-- **[Development Roadmap](../../wiki/Development-Roadmap)** - Future plans
-- **[Troubleshooting](../../wiki/Troubleshooting)** - Common issues
-- **[FAQ](../../wiki/FAQ)** - Frequently asked questions
+- **[Quick Start Guide](https://github.com/Jaylouisw/ProjectCollatz/wiki/Quick-Start)** - Get running in 5 minutes
+- **[Installation Guide](https://github.com/Jaylouisw/ProjectCollatz/wiki/Installation)** - Detailed setup for all platforms
+- **[User Guide](https://github.com/Jaylouisw/ProjectCollatz/wiki/User-Guide)** - How to participate
+- **[Architecture](https://github.com/Jaylouisw/ProjectCollatz/wiki/Architecture)** - Technical design
+- **[Security](https://github.com/Jaylouisw/ProjectCollatz/wiki/Security)** - Trust and verification
+- **[Development Roadmap](https://github.com/Jaylouisw/ProjectCollatz/wiki/Development-Roadmap)** - Future plans
+- **[Troubleshooting](https://github.com/Jaylouisw/ProjectCollatz/wiki/Troubleshooting)** - Common issues
+- **[FAQ](https://github.com/Jaylouisw/ProjectCollatz/wiki/FAQ)** - Frequently asked questions
 
 ---
 
 ## Support
 
-- **Documentation**: [Project Wiki](../../wiki)
+- **Documentation**: [Project Wiki](https://github.com/Jaylouisw/ProjectCollatz/wiki)
 - **Issues**: [GitHub Issues](https://github.com/Jaylouisw/ProjectCollatz/issues)
 - **Diagnostics**: `python run_diagnostics.py`
 - **Community**: [Discussions](https://github.com/Jaylouisw/ProjectCollatz/discussions)
