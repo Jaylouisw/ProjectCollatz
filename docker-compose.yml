@@ -1,5 +1,5 @@
-# Docker Compose for Collatz Distributed Network
-# Run multi-node network for testing
+# Docker Compose for ProjectCollatz Distributed Network
+# Auto-updating containers with GitHub integration
 # Usage: docker-compose up -d
 
 version: '3.8'
@@ -8,13 +8,14 @@ services:
   # Coordinator node (generates work, manages network)
   coordinator:
     build: .
-    image: collatz-network:latest
+    image: ghcr.io/jaylouisw/projectcollatz:latest
     container_name: collatz-coordinator
     hostname: coordinator
     volumes:
       - coordinator-data:/home/collatz/.ipfs
       - coordinator-keys:/app/keys
       - shared-network:/app/network-data
+      - ./:/app  # Mount source for development
     ports:
       - "4001:4001"  # IPFS swarm
       - "5001:5001"  # IPFS API
@@ -22,32 +23,48 @@ services:
     environment:
       - NODE_TYPE=coordinator
       - COLLATZ_NODE_NAME=coordinator
+      - AUTO_UPDATE=true
+      - UPDATE_BRANCH=master
+      - UPDATE_INTERVAL=86400  # Check daily (seconds)
     command: python distributed_collatz.py --generate-work 100
     networks:
       - collatz-net
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ipfs", "swarm", "peers"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
-  # Worker node 1
+  # Worker node 1 (CPU)
   worker1:
     build: .
-    image: collatz-network:latest
+    image: ghcr.io/jaylouisw/projectcollatz:latest
     container_name: collatz-worker1
     hostname: worker1
     volumes:
       - worker1-data:/home/collatz/.ipfs
       - worker1-keys:/app/keys
       - shared-network:/app/network-data
+      - ./:/app
     environment:
       - NODE_TYPE=worker
       - COLLATZ_NODE_NAME=worker1
+      - AUTO_UPDATE=true
+      - UPDATE_BRANCH=master
     command: python distributed_collatz.py --cpu-only
     depends_on:
-      - coordinator
+      coordinator:
+        condition: service_healthy
     networks:
       - collatz-net
     restart: unless-stopped
-
-  # Worker node 2
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "distributed_collatz.py"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
   worker2:
     build: .
     image: collatz-network:latest

@@ -1,28 +1,40 @@
-# Collatz Distributed Network Wiki
+# ProjectCollatz Wiki
 
-Welcome to the comprehensive documentation for the Collatz Distributed Network!
+Welcome to the comprehensive documentation for ProjectCollatz - A distributed verification network exploring the Collatz Conjecture!
 
 ## 🚀 Quick Navigation
 
 ### **Getting Started**
+- **[Quick Start](Quick-Start)** - Get running in 5 minutes
 - **[Installation](Installation)** - Complete setup guide for all platforms
 - **[User Guide](User-Guide)** - How to participate in the network
-- **[Quick Start](Quick-Start)** - Get running in 5 minutes
+- **[Quick Reference](Quick-Reference)** - Command cheat sheet
 
-### **Technical Documentation**
+### **Core Documentation**
 - **[Architecture](Architecture)** - System design and components
-- **[Future Proofing](Future-Proofing)** - Cross-platform compatibility
+- **[Distributed Network](Distributed-Network)** - How the distributed system works
 - **[Security](Security)** - Trust system and cryptographic verification
+- **[User Accounts](User-Accounts)** - Account system and key management
+- **[Versioning](Versioning)** - Protocol evolution and compatibility
 
-### **Advanced Topics**
-- **[Development](Development)** - Contributing code and improvements
+### **Deployment & Operations**
 - **[Deployment](Deployment)** - Production and cloud deployment
-- **[Performance](Performance)** - Optimization and benchmarking
+- **[Production Readiness](Production-Readiness)** - Current status and limitations
+- **[Production Plan](Production-Plan)** - Path to production
+- **[Performance Optimization](Performance-Optimization)** - Tuning and benchmarking
 
-### **Help & Support**
+### **Development**
+- **[Development Roadmap](Development-Roadmap)** - 5-phase development plan
+- **[Contributing](Contributing)** - How to contribute
+- **[Repository Status](Repository-Status)** - Complete status report
+- **[Documentation Index](Documentation-Index)** - All documentation files
+
+### **Community & Support**
 - **[Troubleshooting](Troubleshooting)** - Common issues and solutions
+- **[Error Handling](Error-Handling)** - Debugging and diagnostics
 - **[FAQ](FAQ)** - Frequently asked questions
-- **[API Reference](API-Reference)** - Developer documentation
+- **[Community Engagement](Community-Engagement)** - Outreach and automation
+- **[Community Responses](Community-Responses)** - Dialogue tracking
 
 ---
 

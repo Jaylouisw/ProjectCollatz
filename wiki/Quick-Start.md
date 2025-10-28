@@ -1,353 +1,389 @@
-# Quick Start
+# Quick Start Guide
 
-Get up and running with the Collatz Distributed Network in 5 minutes!
+## 🚀 NEW: Future-Proof Engine (v1.0.1) - RECOMMENDED
 
-## 🎯 Choose Your Path
+**Try the new cross-platform, hardware-adaptive engine:**
 
-| Method | Best For | Time to Start | Features |
-|--------|----------|---------------|----------|
-| **[Future-Proof Engine](#future-proof-engine)** ⭐ | Anyone | 2 minutes | Auto-everything |
-| **[Interactive Launcher](#interactive-launcher)** | Full control | 3 minutes | All features |
-| **[Docker](#docker)** | Containers | 1 minute | Isolated |
-| **[Direct Worker](#direct-worker)** | Advanced | 5 minutes | Scripting |
-
----
-
-## 🔮 Future-Proof Engine (Recommended)
-
-*Works on any OS and hardware - automatically adapts to your system*
-
-### 1. One-Command Install
-
-**Windows (PowerShell as Administrator):**
-```powershell
-iwr -useb https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.ps1 | iex
-```
-
-**Linux/macOS:**
 ```bash
-curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
-```
-
-### 2. Check Compatibility
-```bash
+# Check what your system supports
 python future_proof_engine.py --info
-```
 
-**Expected output:**
-```
-System Information:
-  Platform: Windows 10
-  Architecture: AMD64  
-  Python: 3.11.5
-
-Component Availability:
-  Network Transport: ✓ (IPFSTransport)
-  Compute Engine: ✓ (CUDAComputeEngine) 
-  Configuration Manager: ✓
-
-  Available Transports: ipfs
-  Available Engines: cpu, cuda
-```
-
-### 3. Run Quick Test
-```bash
+# Run a quick test
 python future_proof_engine.py --test
+
+# Start computing (works on any hardware)
+python future_proof_engine.py --local
 ```
 
-**Expected output:**
-```
-Running basic functionality test...
-✓ Configuration loaded: CollatzConfig
-Testing compute verification...
-✓ Verified range 1-100 in 0.003s using CUDA
-✓ Network transport available
-
-Basic functionality test completed!
-```
-
-### 4. Start Contributing
-```bash
-python future_proof_engine.py
-```
-
-**You're done!** The system will:
-- ✅ Detect your hardware (CPU/GPU) automatically
-- ✅ Connect to the IPFS network
-- ✅ Start verifying Collatz ranges
-- ✅ Submit results with cryptographic proofs
+**Benefits of the Future-Proof Engine:**
+- ✅ **Works on any OS**: Windows, Linux, macOS automatically detected
+- ✅ **Any hardware**: CPU-only, NVIDIA, AMD, Intel GPU, Apple Silicon
+- ✅ **Graceful fallbacks**: Uses best available, falls back when needed
+- ✅ **Network ready**: Connects to distributed network when available
+- ✅ **Future ready**: Protocol and hardware independent architecture
 
 ---
 
-## 🌐 Interactive Launcher
+## ⚠️ NOTICE: Legacy local-only mode below (not recommended)
 
-*Full-featured menu system with user accounts*
-
-### 1. Install (same as above)
-```bash
-# Use the same installation commands from Future-Proof section
-```
-
-### 2. Start Launcher
-```bash
-python network_launcher.py
-```
-
-### 3. Create Account
-```
-Main Menu:
-  1. Start Worker Node (with account)
-  2. Start Worker Node (anonymous)
-  3. Start Worker Node (CPU-only)
-  4. Create User Account          ← Choose this first
-  5. View User Statistics
-  6. View Global Leaderboard
-  0. Exit
-
-Enter choice: 4
-```
-
-Follow prompts to create your username.
-
-### 4. Start Worker
-```
-Enter choice: 1
-```
-
-Select your account and start contributing!
-
-**Benefits:**
-- ✅ Persistent identity and credit tracking
-- ✅ Global leaderboard recognition  
-- ✅ Trust level progression
-- ✅ Full network features
+**For the distributed network (recommended), see:**
+- **[DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md)** - Quick start for distributed network
+- **[README.md](README.md)** - Main project documentation
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment
 
 ---
 
-## 🐳 Docker
+## Why You Should Use the Distributed Network Instead
 
-*Fastest way to get started with containers*
+**Distributed Network Benefits:**
+- ✅ Your work is verified by others (Byzantine fault tolerance)
+- ✅ Permanent public record on IPFS
+- ✅ Credit and recognition if you find something
+- ✅ Contribute to global progress
+- ✅ Join a community of contributors
+- ✅ Build reputation and trust
 
-### 1. Pull and Run
+**Local-Only Mode Drawbacks:**
+- ❌ No verification by others (could miss bugs)
+- ❌ Results not shared publicly
+- ❌ No credit system
+- ❌ Work in isolation
+- ❌ Single point of failure
+
+**Install the distributed network instead:**
 ```bash
+# One command:
+curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
+# or see DISTRIBUTED_QUICKREF.md for Windows/Docker/Pi
+```
+
+---
+
+## Local-Only Mode (GPU Optimization)
+
+<details>
+<summary>Click to expand - Only if you specifically need local verification</summary>
+
+### For First-Time Users
+
+### 1. Check System Requirements
+
+**GPU Mode (Recommended):**
+```bash
+python run_diagnostics.py
+```
+
+This checks:
+- ✓ Python libraries
+- ✓ GPU availability (detects all GPUs)
+- ✓ CUDA drivers
+- ✓ File permissions
+
+**Multi-GPU Systems:**
+- Automatically detected and utilized
+- Workload distributed across all GPUs
+- Heterogeneous configurations supported
+
+**CPU Mode (Fallback):**
+- Just Python 3.8+ required
+- No GPU needed
+
+### 2. Install Dependencies
+
+**For GPU Mode:**
+```bash
+pip install cupy-cuda12x  # or cupy-cuda11x for older CUDA
+```
+
+**For CPU Mode:**
+```bash
+# No extra dependencies needed!
+```
+
+### 3. Run the Launcher
+
+```bash
+python launcher.py  # Note: OLD launcher, not network_launcher.py
+```
+
+**What happens:**
+- System checks if optimization is needed
+- **First run:** Auto-tuner starts automatically (GPU mode, ~20-30 minutes)
+- **Subsequent runs:** Skips optimization if hardware unchanged
+- Split-screen shows engine + tuner (GPU mode) or just engine (CPU mode)
+
+**Can I stop it?**
+- Press Ctrl+C anytime
+- Auto-tuner resumes from saved state next time
+- Engine saves progress every 500 billion numbers
+
+### 4. Run a Benchmark (Optional)
+
+After optimization completes:
+
+```bash
+python benchmark.py
+```
+
+This creates a timestamped JSON file with your system's performance data.
+
+---
+
+## Common Workflows
+
+### Just Want to Run It
+```bash
+python launcher.py
+```
+That's it! The launcher handles everything automatically.
+
+### Want Peak Performance
+```bash
+# 1. Optimize system
+python launcher.py
+# (Wait for auto-tuner to complete - GPU mode only)
+
+# 2. Run benchmark
+python benchmark.py
+```
+
+### CPU-Only Mode (No GPU)
+```bash
+python CollatzEngine.py cpu
+```
+No optimization needed for CPU mode.
+
+### Check for Problems
+```bash
+python run_diagnostics.py
+```
+or
+```bash
+python launcher.py --diagnostics
+```
+
+### Resume Interrupted Optimization
+```bash
+python launcher.py
+```
+It automatically detects incomplete optimization and resumes.
+
+---
+
+## Understanding the Output
+
+### Launcher Output (GPU Mode)
+
+```
+System Status Check:
+  Status: Optimized / Not Optimized / First Run
+  Reason: Hardware unchanged / Hardware changed / Never optimized
+
+[ENGINE] Started (PID: 12345)
+[TUNER] Started (PID: 12346)  # Only if optimization needed
+```
+
+**Split Screen:**
+- **Top half:** Collatz Engine (real-time verification)
+- **Bottom half:** Auto-Tuner (optimization progress)
+
+### Engine Metrics
+
+```
+Total tested: 572,345,678,901,234
+Current rate: 9,876,543,210 odd/s
+Highest proven: 572,345,678,901,234
+```
+
+- **odd/s:** Raw numbers checked per second
+- **Highest proven:** Largest number verified to reach 1
+
+### Auto-Tuner Progress
+
+```
+[STAGE 1] Binary Search... 
+[NEW PEAK] 8,500,000,000 odd/s
+[STAGE 2] Fine-tuning...
+[STAGE 3] Progressive refinement...
+```
+
+Stages take ~20-30 minutes total (GPU mode only).
+
+---
+
+## First Run Timeline
+
+### GPU Mode
+1. **Minute 0-1:** System checks, engine starts
+2. **Minute 1-2:** Auto-tuner startup (if needed)
+3. **Minute 2-15:** Stage 1 binary search
+4. **Minute 15-25:** Stage 2 fine-tuning  
+5. **Minute 25-30:** Stage 3 refinement
+6. **Done:** System optimized, runs at peak performance
+
+### CPU Mode
+1. **Minute 0-1:** System checks, engine starts
+2. **Done:** No optimization needed, runs immediately
+
+---
+
+## Troubleshooting Quick Fixes
+
+### "CuPy not found"
+```bash
+pip install cupy-cuda12x
+```
+or use CPU mode: `python CollatzEngine.py cpu`
+
+### "GPU initialization failed"
+1. Update GPU drivers
+2. Check CUDA installation
+3. Run: `python run_diagnostics.py`
+4. Or fallback to CPU mode
+
+### "Permission denied"
+- Windows: Run as administrator
+- Linux: Check folder permissions or use sudo
+
+### Config file errors
+- Engine auto-recovers with defaults
+- Check `error_log.json` for details
+- Delete corrupted files (they'll be recreated)
+
+### Auto-tuner stuck/crashed
+- Press Ctrl+C
+- Run `python launcher.py` again
+- It auto-resumes from saved state
+
+---
+
+## What Files Get Created?
+
+**During normal operation:**
+- `collatz_config.json` - Progress state
+- `gpu_tuning.json` - Optimal settings (GPU mode)
+- `optimization_state.json` - Optimization status
+- `error_log.json` - Error history (if any errors occur)
+
+**When you run diagnostics:**
+- `diagnostic_report.json` - System health check
+
+**When you run benchmark:**
+- `benchmark_results_YYYYMMDD_HHMMSS.json` - Performance data
+
+**All these files:**
+- Stay on your computer (not uploaded anywhere)
+- Can be safely deleted (they'll be recreated)
+- Are in `.gitignore` (won't be committed to git)
+
+---
+
+## Performance & Optimizations
+
+### What Makes This Fast?
+
+**GPU Mode (10+ billion/sec):**
+- ✅ Branchless GPU kernel (20-40% faster than naive approach)
+- ✅ Multi-GPU support (linear scaling)
+- ✅ Adaptive auto-tuner (finds optimal settings)
+- ✅ 128-bit arithmetic (no precision loss)
+
+**CPU Mode:**
+- ✅ All-core parallelism (8 cores = 8x speed)
+- ✅ Efficient even number handling
+- ✅ Low-priority execution (doesn't slow your computer)
+
+### Why Not Even Faster?
+
+**We prioritize verification integrity:**
+- ❌ No intermediate step skipping
+- ❌ No speculative computation
+- ❌ Full cycle detection maintained
+
+**Some optimizations were intentionally avoided:**
+1. **Odd-to-odd skipping** - Would be 5x faster but skip verification steps
+2. **Multi-step batching** - Would be 2-3x faster but compromise cycle detection
+3. **SIMD vectorization** - Actually 2x slower due to overhead (tested!)
+
+**See [README.md#technical-optimizations](README.md#technical-optimizations) for full details.**
+
+---
+
+## Advanced Usage
+
+### Force Fresh Optimization
+```bash
+# Delete optimization state
+del optimization_state.json     # Windows
+rm optimization_state.json      # Linux/Mac
+
+# Run launcher (will re-optimize)
+python launcher.py
+```
+
+### Run Without Launcher
+```bash
+# Engine only (no auto-tuner)
+python CollatzEngine.py
+
+# Auto-tuner only
+python auto_tuner.py
+```
+
+### Check Optimization Status
+Open `optimization_state.json` to see:
+- Hardware fingerprint
+- Optimization completion status
+- Last update timestamp
+
+---
+
+## Getting Help
+
+1. **Check error log:** `error_log.json`
+2. **Run diagnostics:** `python run_diagnostics.py`
+3. **Read troubleshooting:** `ERROR_HANDLING.md`
+4. **Check documentation:** `README.md`
+5. **Open an issue:** Include diagnostic report and error log
+
+---
+
+## Next Steps
+
+Once you're running:
+- Let it run! Verification continues indefinitely
+- Check back for new peak rates
+- Run benchmarks to compare configurations
+- Share results (see `CONTRIBUTING.md`)
+- Try different hardware if available
+
+**Most important:** Have fun exploring the Collatz Conjecture! 🚀
+
+</details>
+
+---
+
+## Seriously, Use the Distributed Network!
+
+The distributed network gives you:
+- ✅ **Verification** - Your results are checked by others
+- ✅ **Recognition** - Contribute to the global leaderboard
+- ✅ **Community** - Join others exploring this problem
+- ✅ **Impact** - Your work becomes part of public mathematical record
+- ✅ **Credit** - Get recognized if you find something important
+
+**Get started in one command:**
+
+```bash
+# Linux/Mac
+curl -sSL https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.sh | bash
+
+# Windows
+iwr -useb https://raw.githubusercontent.com/Jaylouisw/ProjectCollatz/master/install.ps1 | iex
+
+# Docker
 docker pull jaylouisw/collatz-network:latest
 docker run -it jaylouisw/collatz-network
 ```
 
-### 2. That's It!
-The container will automatically:
-- Start the network launcher
-- Guide you through account creation  
-- Begin contributing to the network
-
-### Advanced Docker Usage
-```bash
-# Run in background
-docker run -d --name collatz-worker jaylouisw/collatz-network python future_proof_engine.py
-
-# With persistent data
-docker run -it -v ./collatz-data:/app/data jaylouisw/collatz-network
-
-# Multiple workers
-docker-compose up -d
-```
-
----
-
-## ⚡ Direct Worker (Advanced)
-
-*Command-line interface for automation and scripting*
-
-### 1. Install (same as above)
-
-### 2. Create Account
-```bash
-python -c "
-from user_account import UserAccountManager
-manager = UserAccountManager() 
-manager.create_account('your_username')
-"
-```
-
-### 3. Start Worker
-```bash
-python distributed_collatz.py --user-key ./keys/your_username_private_key.pem
-```
-
-### Command Options
-```bash
-# Anonymous mode (no account needed)
-python distributed_collatz.py --anonymous
-
-# CPU-only mode
-python distributed_collatz.py --cpu-only --user-key ./keys/your_key.pem
-
-# Custom worker name
-python distributed_collatz.py --worker-name server-01 --user-key ./keys/your_key.pem
-
-# Multiple workers
-for i in {1..4}; do
-    python distributed_collatz.py --user-key ./keys/your_key.pem --worker-name worker-$i &
-done
-```
-
----
-
-## 🔍 What Happens Next?
-
-### Network Connection
-```
-2025-10-27 15:30:22 - INFO - Initializing Future-Proof Collatz Engine
-2025-10-27 15:30:23 - INFO - Initialized network transport: IPFSTransport  
-2025-10-27 15:30:24 - INFO - Connected to network as node: 12D3KooW...
-```
-
-### Work Assignment
-```
-2025-10-27 15:30:25 - INFO - Starting distributed computation...
-2025-10-27 15:30:26 - INFO - Claimed work range: 1000001-1010000
-2025-10-27 15:30:26 - INFO - Verifying range 1000001-1010000
-```
-
-### Verification and Submission
-```
-2025-10-27 15:30:27 - INFO - Range verified: 1000001-1010000 (1.2s, CUDA)
-2025-10-27 15:30:28 - INFO - Submitting cryptographic proof...
-2025-10-27 15:30:29 - INFO - Proof accepted, trust +10 (total: 110)
-```
-
-### Continuous Progress
-```
-2025-10-27 15:30:30 - INFO - Claimed work range: 1010001-1020000
-2025-10-27 15:30:31 - INFO - Verifying range 1010001-1020000
-```
-
-The system will continue automatically, contributing to the global verification effort!
-
----
-
-## 📊 Monitor Your Progress
-
-### Real-Time Statistics
-```bash
-# View your personal stats
-python network_launcher.py
-# Choose option 5: View User Statistics
-
-# View global leaderboard
-python network_launcher.py  
-# Choose option 6: View Global Leaderboard
-```
-
-### Performance Monitoring
-```bash
-# System diagnostics
-python network_launcher.py
-# Choose option 10: Run System Diagnostics
-
-# IPFS network status
-python network_launcher.py
-# Choose option 11: Check IPFS Status
-```
-
-### Web Dashboard
-Visit the [Network Dashboard](https://ipfs.io/ipns/collatz-leaderboard) to see:
-- Network statistics and health
-- Contribution tracking
-- Your progress and ranking
-
----
-
-## 🔧 Performance Tips
-
-### GPU Acceleration
-- **NVIDIA**: Install [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads)
-- **AMD**: Install [ROCm](https://rocmdocs.amd.com/en/latest/Installation_Guide/Installation-Guide.html) (Linux)
-- **Intel**: Support coming soon
-- **Apple**: Metal support ready
-
-### System Optimization
-```bash
-# Check GPU status
-nvidia-smi        # NVIDIA
-rocm-smi         # AMD
-
-# Monitor resources
-htop             # CPU/Memory
-iotop            # Disk I/O
-```
-
-### Network Optimization
-```bash
-# IPFS performance tuning
-ipfs config --json Datastore.GCPeriod '"1h"'
-ipfs config --json Swarm.ConnMgr.HighWater 200
-ipfs config --json Swarm.ConnMgr.LowWater 50
-```
-
----
-
-## ❓ Common Issues
-
-### "IPFS daemon not running"
-```bash
-# Start IPFS daemon
-ipfs daemon
-
-# Or in background
-ipfs daemon &
-```
-
-### "No GPU detected"  
-```bash
-# Check GPU drivers
-nvidia-smi        # Should show GPU info
-python -c "import torch; print(torch.cuda.is_available())"  # Should print True
-```
-
-### "No work available"
-```bash
-# Wait 5-10 minutes for work generation
-# Or generate work manually:
-python network_launcher.py
-# Choose option 7: Generate Work Ranges
-```
-
-### "Permission denied"
-```bash
-# Fix file permissions
-chmod +x *.py
-chmod +x install.sh
-
-# On Linux, add user to groups
-sudo usermod -a -G docker $USER
-sudo usermod -a -G render $USER  # For GPU access
-```
-
----
-
-## 🎉 You're Contributing!
-
-**Congratulations!** You're now part of the global effort to solve the Collatz Conjecture!
-
-### What You're Doing
-- **Verifying** ranges of numbers follow the Collatz sequence to 1
-- **Creating** permanent cryptographic proofs of your work
-- **Building** the most comprehensive verification of the conjecture ever attempted
-- **Contributing** to mathematical history and scientific knowledge
-
-### Next Steps
-1. **Monitor Progress**: Check your stats and ranking
-2. **Scale Up**: Add more workers or upgrade hardware  
-3. **Get Involved**: Join discussions and contribute to development
-4. **Spread the Word**: Tell others about the project
-
-### Need Help?
-- **[Troubleshooting](Troubleshooting)** - Common issues and solutions
-- **[User Guide](User-Guide)** - Detailed usage instructions
-- **[FAQ](FAQ)** - Frequently asked questions
-- **[GitHub Issues](https://github.com/Jaylouisw/ProjectCollatz/issues)** - Report bugs
-
-**Welcome to the Collatz Distributed Network community!** 🚀
-
-*Together, we're tackling one of mathematics' greatest unsolved problems!*
+**See [DISTRIBUTED_QUICKREF.md](DISTRIBUTED_QUICKREF.md) for complete guide!**

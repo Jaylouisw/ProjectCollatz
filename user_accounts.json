@@ -7,7 +7,129 @@
       "12D3KooWDjRqMgxn1aLrabzPkrzviM1iqUbM1Vkrz5HWVyd611jD"
     ],
     "created_at": 1761591359.4917202,
-    "last_active": 1761592785.0627313,
+    "last_active": 1761657405.1106734,
+    "total_contributions": 0,
+    "total_ranges": 0,
+    "total_compute_hours": 0.0
+  },
+  "U261f0bae102889e9": {
+    "username": "test_user_1761671782",
+    "user_id": "U261f0bae102889e9",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEADIAqcxX0GK7RFmeS3ih/aetsxBp/qT2EC0ApO9SyFyg=\n-----END PUBLIC KEY-----\n",
+    "registered_nodes": [],
+    "created_at": 1761671782.3434901,
+    "last_active": 1761671782.3434908,
+    "total_contributions": 0,
+    "total_ranges": 0,
+    "total_compute_hours": 0.0
+  },
+  "U1c814f871129ce4b": {
+    "username": "test_user_1761671821",
+    "user_id": "U1c814f871129ce4b",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAKQkIZ78YtFQxfb9bBLsIpNocrBWo9VIJ9PGHyQ1aCtk=\n-----END PUBLIC KEY-----\n",
+    "registered_nodes": [],
+    "created_at": 1761671821.286068,
+    "last_active": 1761671821.2860684,
+    "total_contributions": 0,
+    "total_ranges": 0,
+    "total_compute_hours": 0.0
+  },
+  "Ub756ce4780f2464f": {
+    "username": "test_user_1761671841",
+    "user_id": "Ub756ce4780f2464f",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA2cpZhHGZzFSmEB66NGR3fzWHoJ9c1NZT/FRZKOGHtbw=\n-----END PUBLIC KEY-----\n",
+    "registered_nodes": [
+      "test_worker_2"
+    ],
+    "created_at": 1761671841.9112275,
+    "last_active": 1761671841.922695,
+    "total_contributions": 0,
+    "total_ranges": 0,
+    "total_compute_hours": 0.0
+  },
+  "Ua76f78dfe1178d63": {
+    "username": "test_user_1761673114",
+    "user_id": "Ua76f78dfe1178d63",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA4zulJnQQ9cjj1x28h2rWoi1A1o2MovTM69THSlzSfkE=\n-----END PUBLIC KEY-----\n",
+    "registered_nodes": [
+      "test_worker_2"
+    ],
+    "created_at": 1761673114.8592525,
+    "last_active": 1761673114.8749466,
+    "total_contributions": 0,
+    "total_ranges": 0,
+    "total_compute_hours": 0.0
+  },
+  "Uc6a416d88d2e529c": {
+    "username": "test_user_1761673119",
+    "user_id": "Uc6a416d88d2e529c",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAK/T/tDv+u00cwoQVGQ9gN320lBEAI5Srd0rjEu598ww=\n-----END PUBLIC KEY-----\n",
+    "registered_nodes": [
+      "test_worker_2"
+    ],
+    "created_at": 1761673119.661729,
+    "last_active": 1761673119.6737213,
+    "total_contributions": 0,
+    "total_ranges": 0,
+    "total_compute_hours": 0.0
+  },
+  "U6f07953b6c7e7d97": {
+    "username": "autotest_1761673186",
+    "user_id": "U6f07953b6c7e7d97",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAYRP/kfdAGUoSCJ+dHR11bWXkMpHShmDqefQXjfCx5L8=\n-----END PUBLIC KEY-----\n",
+    "registered_nodes": [],
+    "created_at": 1761673186.6752024,
+    "last_active": 1761673186.6752028,
+    "total_contributions": 0,
+    "total_ranges": 0,
+    "total_compute_hours": 0.0
+  },
+  "U6942b28e3bd2215d": {
+    "username": "autotest_1761673202",
+    "user_id": "U6942b28e3bd2215d",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAxzZvlVmy0CI82y0NMgiXd/8qFRVJOtUv3XJy8+fg07M=\n-----END PUBLIC KEY-----\n",
+    "registered_nodes": [],
+    "created_at": 1761673202.3743787,
+    "last_active": 1761673202.3908176,
+    "total_contributions": 0,
+    "total_ranges": 0,
+    "total_compute_hours": 0.0
+  },
+  "Uc849942c92e72338": {
+    "username": "autotest_1761673351",
+    "user_id": "Uc849942c92e72338",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAGdyOglr1rY9cGoNVRF5uPwiM56pxWr4mZXhUKJ/SPeg=\n-----END PUBLIC KEY-----\n",
+    "registered_nodes": [
+      "12D3KooWDjRqMgxn1aLrabzPkrzviM1iqUbM1Vkrz5HWVyd611jD"
+    ],
+    "created_at": 1761673351.3487847,
+    "last_active": 1761673593.0445979,
+    "total_contributions": 0,
+    "total_ranges": 0,
+    "total_compute_hours": 0.0
+  },
+  "U547e5ac6bc3e3b70": {
+    "username": "autotest_1761673610",
+    "user_id": "U547e5ac6bc3e3b70",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAtClNJq+F5+wtmO314xSaEcmen9d/uQz1RvMDriToUaI=\n-----END PUBLIC KEY-----\n",
+    "registered_nodes": [
+      "12D3KooWDjRqMgxn1aLrabzPkrzviM1iqUbM1Vkrz5HWVyd611jD"
+    ],
+    "created_at": 1761673610.6440246,
+    "last_active": 1761673852.0968745,
+    "total_contributions": 0,
+    "total_ranges": 0,
+    "total_compute_hours": 0.0
+  },
+  "U7ad32900e594f6c8": {
+    "username": "test_user_1761678446",
+    "user_id": "U7ad32900e594f6c8",
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEA2De1qFGHF/nsKpfvWDzxrL73LqTuML37BbE5V2qAhNQ=\n-----END PUBLIC KEY-----\n",
+    "registered_nodes": [
+      "test_worker_2"
+    ],
+    "created_at": 1761678446.754019,
+    "last_active": 1761678446.7684877,
     "total_contributions": 0,
     "total_ranges": 0,
     "total_compute_hours": 0.0
