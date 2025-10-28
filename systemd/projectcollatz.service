@@ -1,0 +1,27 @@
+# ProjectCollatz Auto-Update System Service
+# Place in /etc/systemd/system/projectcollatz.service
+
+[Unit]
+Description=ProjectCollatz Distributed Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=collatz
+Group=collatz
+WorkingDirectory=/opt/projectcollatz
+ExecStartPre=/opt/projectcollatz/update.sh
+ExecStart=/opt/projectcollatz/venv/bin/python distributed_collatz.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment="PYTHONUNBUFFERED=1"
+
+# Automatic restart on code updates
+# Systemd will restart the service if update.sh changes files
+TimeoutStartSec=120
+
+[Install]
+WantedBy=multi-user.target

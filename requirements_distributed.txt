@@ -19,6 +19,9 @@ psutil>=5.9.0,<7.0.0
 # NumPy 2.x support with testing required
 numpy>=1.24.0,<2.1.0
 
+# JSON Schema validation
+jsonschema>=4.0.0,<5.0.0
+
 # ===========================================
 # OPTIONAL GPU SUPPORT (Future-Proofed)
 # ===========================================
