@@ -366,21 +366,33 @@ class DistributedCollatzWorker:
     
     def verify_range_gpu(self, start: int, end: int) -> bool:
         """
-        Verify range using GPU.
+        Verify range using GPU with actual CollatzEngine integration.
         Returns True if all numbers converge, False if counterexample found.
         """
-        # This would call your CollatzEngine GPU verification
-        # For now, placeholder that would integrate with your existing code
-        print(f"[WORKER] Using GPU verification...")
-        
-        # TODO: Integrate with actual CollatzEngine.py gpu_check_range
-        # result = gpu_check_range(start, end)
-        # return result == 1  # 1 = all converged
-        
-        # Placeholder
-        import random
-        time.sleep(1)  # Simulate computation
-        return True  # All converged (placeholder)
+        try:
+            # Import and use actual GPU verification from CollatzEngine
+            from CollatzEngine import gpu_check_range
+            
+            print(f"[WORKER] 🚀 Using GPU verification for range [{start}, {end})")
+            result = gpu_check_range(start, end)
+            
+            if result['counterexample'] is not None:
+                counterexample = result['counterexample']
+                print(f"\n🎯 COUNTEREXAMPLE FOUND: {counterexample}\n")
+                return False
+            
+            print(f"[WORKER] ✅ Verified {result['numbers_checked']:,} numbers converge to 1")
+            return True
+            
+        except ImportError as e:
+            print(f"[WORKER] ⚠️ CollatzEngine not available: {e}")
+            print(f"[WORKER] Falling back to basic verification...")
+            return self.verify_range_basic(start, end)
+        except Exception as e:
+            print(f"[WORKER] ❌ GPU verification error: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
     
     def verify_range_cpu(self, start: int, end: int) -> bool:
         """
@@ -389,14 +401,26 @@ class DistributedCollatzWorker:
         """
         print(f"[WORKER] Using CPU verification...")
         
-        # TODO: Integrate with actual CollatzEngine.py cpu_check_range
-        # result = cpu_check_range(start, end)
-        # return result == 1  # 1 = all converged
-        
-        # Placeholder
-        import random
-        time.sleep(5)  # Simulate longer CPU computation
-        return True  # All converged (placeholder)
+        try:
+            from CollatzEngine import cpu_check_range
+            
+            result = cpu_check_range(start, end)
+            
+            if result.get('counterexample') is not None:
+                print(f"[WORKER] 🎉 COUNTEREXAMPLE FOUND: {result['counterexample']}")
+                return False
+            
+            print(f"[WORKER] ✓ Verified {result.get('numbers_checked', end - start)} numbers")
+            return True
+            
+        except ImportError:
+            print(f"[WORKER] ⚠️ CollatzEngine.py not found, using basic verification")
+            return self.verify_range_basic(start, end)
+        except Exception as e:
+            print(f"[WORKER] ❌ CPU verification error: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
     
     def run_worker_loop(self, num_iterations: Optional[int] = None):
         """

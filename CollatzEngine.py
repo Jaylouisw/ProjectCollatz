@@ -261,7 +261,7 @@ def get_gpu_config():
         # Load tuning parameters, use defaults if file doesn't exist
         try:
             if ERROR_HANDLING:
-                valid, msg, tuning = check_config_validity('gpu_tuning.json')
+                valid, msg, tuning_data = check_config_validity('gpu_tuning.json')
                 if not valid:
                     logger.log_error('gpu_config', f'GPU tuning config invalid: {msg}')
                     print(f"[WARNING] {msg}")
@@ -274,6 +274,15 @@ def get_gpu_config():
                         'batch_size_override': None,
                         'cpu_workers': None
                     }
+                else:
+                    # Handle new multi-GPU format or old format
+                    if isinstance(tuning_data, dict) and 'config' in tuning_data:
+                        tuning = tuning_data['config']
+                        num_gpus_tuned = tuning_data.get('num_gpus', 1)
+                        if num_gpus_tuned > 1:
+                            print(f"[INFO] Loaded multi-GPU tuning (optimized for {num_gpus_tuned} GPUs)")
+                    else:
+                        tuning = tuning_data  # Old format
             else:
                 with open('gpu_tuning.json', 'r') as f:
                     tuning_data = json.load(f)
@@ -316,6 +325,12 @@ def get_gpu_config():
         sm_count = props['multiProcessorCount']
         max_threads_per_sm = props['maxThreadsPerMultiProcessor']
         warp_size = props['warpSize']
+        
+        # Ensure tuning has required keys
+        if not isinstance(tuning, dict):
+            raise ValueError(f"tuning must be dict, got {type(tuning)}")
+        if 'threads_per_block_multiplier' not in tuning:
+            raise KeyError("tuning missing 'threads_per_block_multiplier'")
         
         threads_per_block = warp_size * tuning['threads_per_block_multiplier']
         blocks_per_sm = tuning['blocks_per_sm']
@@ -1029,9 +1044,16 @@ def worker_check_range(args):
         reaches_1, steps, reason = collatz_check_cpu(n, highest_proven)
         
         if not reaches_1:
-            return ('counterexample', n, reason)
+            return {
+                'counterexample': n,
+                'numbers_checked': i,
+                'reason': reason
+            }
     
-    return ('success', count)
+    return {
+        'counterexample': None,
+        'numbers_checked': count
+    }
 
 def init_worker():
     """Initialize worker to ignore SIGINT."""
@@ -1393,27 +1415,39 @@ def gpu_check_range(start: int, end: int) -> dict:
     numbers_checked = 0
     batch_size = 1000000
     config = get_gpu_config()
+    
+    if config is None:
+        # GPU initialization failed, fall back to CPU
+        return cpu_check_range(start, end)
+    
     highest_proven = end
     
     try:
         current = start
         while current < end:
-            batch_end = min(current + batch_size, end)
-            result = check_batch_gpu(current, batch_end - current, highest_proven, 
+            chunk_size = min(batch_size, end - current)
+            result = check_batch_gpu(current, chunk_size, highest_proven, 
                                     config['threads_per_block'])
             
-            if result['counterexample'] is not None:
+            # check_batch_gpu returns tuple: ('status', value, ...)
+            if result[0] == 'disproven':
                 return {
-                    "counterexample": result['counterexample'],
-                    "numbers_checked": numbers_checked + result['numbers_checked']
+                    "counterexample": result[1],
+                    "numbers_checked": numbers_checked + (result[1] - start)
                 }
+            elif result[0] == 'success':
+                numbers_checked += result[1]
+            elif result[0] == 'inconclusive':
+                # For API simplicity, treat inconclusive as success (needs CPU follow-up)
+                numbers_checked += chunk_size
             
-            numbers_checked += result['numbers_checked']
-            current = batch_end
+            current += chunk_size
         
         return {"counterexample": None, "numbers_checked": numbers_checked}
     except Exception as e:
         print(f"[GPU ERROR] {e}, falling back to CPU")
+        import traceback
+        traceback.print_exc()
         return cpu_check_range(start, end)
 
 

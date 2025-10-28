@@ -110,7 +110,7 @@ class IPFSCoordinator:
         self.peer_states: Dict[str, str] = {}  # peer_id -> latest_state_cid
         
         # Worker availability tracking (for RANDOM assignment)
-        self.available_workers: Dict[str, float] = {}  # worker_id -> last_seen_timestamp
+        self.available_workers: Dict[str, Dict[str, any]] = {}  # worker_id -> {timestamp, user_id}
         self.worker_assignments: Dict[str, str] = {}  # worker_id -> assignment_id (current assignment)
         
         # Genesis timestamp (network start time)
@@ -120,8 +120,32 @@ class IPFSCoordinator:
         self.counterexample_found = False
         self.counterexample_data: Optional[Dict] = None
         
+        # Leaderboard & Status Website (fully decentralized)
+        self.leaderboard_generator = None
+        self.status_generator = None
+        self.last_leaderboard_update = 0
+        self.last_status_update = 0
+        self.leaderboard_update_interval = 300  # Update every 5 minutes after verification completes
+        self.status_update_interval = 60  # Update status every 1 minute
+        
+        # Consensus voting for canonical leaderboard/status CIDs
+        self.leaderboard_votes: Dict[str, int] = {}  # CID -> vote count
+        self.status_votes: Dict[str, int] = {}  # CID -> vote count
+        self.canonical_leaderboard_cid: Optional[str] = None
+        self.canonical_status_cid: Optional[str] = None
+        
         print(f"[IPFS] 🌐 Fully decentralized node: {self.node_id[:16]}...")
         print(f"[IPFS] Network will run forever with n>0 nodes!")
+        
+        # Initialize leaderboard and status generators (ALL nodes can update)
+        try:
+            from leaderboard_generator import LeaderboardGenerator
+            from status_website_generator import StatusWebsiteGenerator
+            self.leaderboard_generator = LeaderboardGenerator()
+            self.status_generator = StatusWebsiteGenerator()
+            print(f"[IPFS] 📊 Decentralized leaderboard & status enabled (all nodes can publish)")
+        except Exception as e:
+            print(f"[IPFS] ⚠️ Leaderboard/status disabled: {e}")
         
         # Load existing state from network
         self.discover_and_sync_peers()
@@ -145,7 +169,48 @@ class IPFSCoordinator:
         try:
             # Find peers via IPFS swarm
             swarm_peers = self.client.swarm.peers()
-            self.known_peers = [p['Peer'] for p in swarm_peers if p['Peer'] != self.node_id]
+            
+            # Handle different response formats from IPFS API
+            self.known_peers = []
+            
+            # Check if it's a dict with 'Peers' key
+            if isinstance(swarm_peers, dict):
+                if 'Peers' in swarm_peers:
+                    peer_list = swarm_peers['Peers']
+                else:
+                    # Empty dict or unexpected format
+                    peer_list = []
+            elif isinstance(swarm_peers, list):
+                peer_list = swarm_peers
+            else:
+                # Unknown format, skip peer discovery
+                peer_list = []
+            
+            # Extract peer IDs, handling various formats
+            for p in peer_list:
+                try:
+                    if isinstance(p, dict):
+                        # Format: {'Peer': 'ID', 'Addr': '/ip4/...'}
+                        if 'Peer' in p:
+                            peer_id = p['Peer']
+                        else:
+                            continue
+                    elif isinstance(p, str):
+                        # Format: multiaddr string like "/ip4/.../p2p/ID"
+                        if '/p2p/' in p:
+                            peer_id = p.split('/p2p/')[-1]
+                        elif '/ipfs/' in p:
+                            peer_id = p.split('/ipfs/')[-1]
+                        else:
+                            peer_id = p
+                    else:
+                        continue
+                        
+                    if peer_id and peer_id != self.node_id:
+                        self.known_peers.append(peer_id)
+                except Exception as parse_error:
+                    # Skip malformed peer entry
+                    continue
             
             print(f"[IPFS] Discovered {len(self.known_peers)} peers in network")
             
@@ -224,8 +289,13 @@ class IPFSCoordinator:
                     'total_assignments': len(self.work_assignments),
                     'completed_assignments': sum(1 for a in self.work_assignments.values() 
                                                 if a.status == 'completed'),
-                    'total_proofs': len(self.verification_proofs)
-                }
+                    'total_proofs': len(self.verification_proofs),
+                    'known_peers': len(self.known_peers),
+                    'active_workers': len(self.available_workers)
+                },
+                # Include current proposals so peers can see our votes
+                'leaderboard_proposal_cid': getattr(self, 'canonical_leaderboard_cid', None),
+                'status_proposal_cid': getattr(self, 'canonical_status_cid', None)
             }
             
             # Upload to IPFS
@@ -288,6 +358,50 @@ class IPFSCoordinator:
                     continue  # Peer might not have published yet
         
         print(f"[IPFS] 🔄 Gossip sync complete ({len(self.known_peers)} peers)")
+        # After gossip, attempt to tally votes and publish canonical resources if we hold keys
+        try:
+            self._tally_votes_from_peer_states()
+            self._maybe_publish_ipns()
+        except Exception:
+            pass
+
+    def _tally_votes_from_peer_states(self):
+        """Tally leaderboard/status votes based on current vote maps and known peers."""
+        # Simple quorum: at least 2 votes or majority of known peers
+        quorum = max(2, (len(self.known_peers) + 1) // 2 + 1)
+        # Check leaderboard
+        for cid, count in list(self.leaderboard_votes.items()):
+            if count >= quorum:
+                if self.canonical_leaderboard_cid != cid:
+                    self.canonical_leaderboard_cid = cid
+                    print(f"[CONSENSUS] ✅ Leaderboard reached quorum: /ipfs/{cid}")
+        # Check status
+        for cid, count in list(self.status_votes.items()):
+            if count >= quorum:
+                if self.canonical_status_cid != cid:
+                    self.canonical_status_cid = cid
+                    print(f"[CONSENSUS] ✅ Status reached quorum: /ipfs/{cid}")
+
+    def _maybe_publish_ipns(self):
+        """If this node has IPNS keys for leaderboard/status, publish canonical CIDs so the network has stable names.
+        Only nodes with keys will publish; other nodes will participate in consensus via votes.
+        """
+        try:
+            if self.canonical_leaderboard_cid:
+                try:
+                    self.client.name.publish(self.canonical_leaderboard_cid, key='collatz-leaderboard', lifetime='24h')
+                    print(f"[IPNS] Published leaderboard to IPNS (collatz-leaderboard)")
+                except Exception:
+                    pass
+
+            if self.canonical_status_cid:
+                try:
+                    self.client.name.publish(self.canonical_status_cid, key='collatz-status', lifetime='24h')
+                    print(f"[IPNS] Published status to IPNS (collatz-status)")
+                except Exception:
+                    pass
+        except Exception:
+            pass
     
     def merge_peer_state(self, peer_state_cid: str):
         """
@@ -328,6 +442,23 @@ class IPFSCoordinator:
                 else:
                     print(f"[IPFS] 🚫 SECURITY: Rejected invalid peer progress claim: {peer_highest:,}")
                     print(f"[IPFS] Current valid progress: {self.global_highest_proven:,}")
+            # Collect peer proposals for leaderboard/status and vote locally
+            try:
+                lb = peer_state.get('leaderboard_proposal_cid')
+                if lb:
+                    self.leaderboard_votes[lb] = self.leaderboard_votes.get(lb, 0) + 1
+                    if not self.canonical_leaderboard_cid or self.leaderboard_votes[lb] > self.leaderboard_votes.get(self.canonical_leaderboard_cid, 0):
+                        self.canonical_leaderboard_cid = lb
+                        print(f"[CONSENSUS] 🗳️ Canonical leaderboard updated from peers: /ipfs/{lb}")
+
+                st = peer_state.get('status_proposal_cid')
+                if st:
+                    self.status_votes[st] = self.status_votes.get(st, 0) + 1
+                    if not self.canonical_status_cid or self.status_votes[st] > self.status_votes.get(self.canonical_status_cid, 0):
+                        self.canonical_status_cid = st
+                        print(f"[CONSENSUS] 🗳️ Canonical status updated from peers: /ipfs/{st}")
+            except Exception:
+                pass
         
         except Exception as e:
             print(f"[IPFS] Error merging peer state: {e}")
@@ -463,13 +594,16 @@ class IPFSCoordinator:
             worker_id: Unique worker identifier
             user_id: Optional user account ID
         """
-        self.available_workers[worker_id] = time.time()
+        self.available_workers[worker_id] = {
+            'timestamp': time.time(),
+            'user_id': user_id
+        }
         
         # Clean up stale workers (not seen in 5 minutes)
         current_time = time.time()
         stale_workers = [
-            wid for wid, last_seen in self.available_workers.items()
-            if current_time - last_seen > 300  # 5 minutes
+            wid for wid, worker_data in self.available_workers.items()
+            if current_time - worker_data['timestamp'] > 300  # 5 minutes
         ]
         for wid in stale_workers:
             del self.available_workers[wid]
@@ -701,6 +835,9 @@ class IPFSCoordinator:
         if len(assignment.completed_workers) >= assignment.redundancy_factor:
             assignment.status = 'completed'
             print(f"[IPFS] ✅ Assignment {assignment_id[:8]}... completed by {assignment.redundancy_factor} workers")
+            
+            # Auto-update leaderboard when work completes
+            self._try_update_leaderboard()
         
         # Publish state update (decentralized - any node can publish)
         self.publish_state_to_network()
@@ -962,6 +1099,68 @@ class IPFSCoordinator:
             'average_time_per_billion': (total_compute / (total_verified / 1e9)) if total_verified > 0 else 0,
             'network_mode': 'fully_decentralized'
         }
+    
+    def _try_update_leaderboard(self):
+        """
+        🌐 FULLY DECENTRALIZED: Auto-update leaderboard & status when verification completes.
+        Any node can generate and publish. Consensus determines canonical version.
+        Uses IPFS content-addressing: identical data = same CID (automatic consensus).
+        """
+        # Check if generators are available
+        if not self.leaderboard_generator or not self.status_generator:
+            return
+        
+        current_time = time.time()
+        
+        # Update leaderboard (rate-limited)
+        if current_time - self.last_leaderboard_update >= self.leaderboard_update_interval:
+            try:
+                print(f"[IPFS] 🔄 Auto-updating leaderboard...")
+                leaderboard_cid = self.leaderboard_generator.update_leaderboard()
+                if leaderboard_cid:
+                    self.last_leaderboard_update = current_time
+                    self._vote_for_cid('leaderboard', leaderboard_cid)
+                    print(f"[IPFS] ✅ Leaderboard published: /ipfs/{leaderboard_cid}")
+            except Exception as e:
+                print(f"[IPFS] ⚠️ Leaderboard update failed: {e}")
+        
+        # Update status website (more frequent)
+        if current_time - self.last_status_update >= self.status_update_interval:
+            try:
+                print(f"[IPFS] 🔄 Auto-updating status website...")
+                status_cid = self.status_generator.update_status(
+                    network_stats=self.get_network_statistics(),
+                    leaderboard_cid=self.canonical_leaderboard_cid,
+                    active_nodes=len(self.known_peers) + 1,
+                    node_id=self.node_id
+                )
+                if status_cid:
+                    self.last_status_update = current_time
+                    self._vote_for_cid('status', status_cid)
+                    print(f"[IPFS] ✅ Status website published: /ipfs/{status_cid}")
+                    print(f"[IPFS] 🌐 View at: https://ipfs.io/ipfs/{status_cid}")
+            except Exception as e:
+                print(f"[IPFS] ⚠️ Status update failed: {e}")
+    
+    def _vote_for_cid(self, content_type: str, cid: str):
+        """
+        🗳️ CONSENSUS: Vote for a CID as canonical version.
+        Multiple nodes publishing identical content = same CID = automatic agreement.
+        """
+        if content_type == 'leaderboard':
+            self.leaderboard_votes[cid] = self.leaderboard_votes.get(cid, 0) + 1
+            # Update canonical if this CID has most votes
+            if not self.canonical_leaderboard_cid or \
+               self.leaderboard_votes[cid] > self.leaderboard_votes.get(self.canonical_leaderboard_cid, 0):
+                self.canonical_leaderboard_cid = cid
+                print(f"[CONSENSUS] 🗳️ Canonical leaderboard: /ipfs/{cid}")
+        
+        elif content_type == 'status':
+            self.status_votes[cid] = self.status_votes.get(cid, 0) + 1
+            if not self.canonical_status_cid or \
+               self.status_votes[cid] > self.status_votes.get(self.canonical_status_cid, 0):
+                self.canonical_status_cid = cid
+                print(f"[CONSENSUS] 🗳️ Canonical status: /ipfs/{cid}")
 
 
 # Example usage
